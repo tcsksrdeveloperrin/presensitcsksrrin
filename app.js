@@ -57,6 +57,62 @@ async function initStaffPage() {
     }
 }
 
+// --- FUNGSI SUBMIT FINAL ---
+async function submitAttendance() {
+    const btn = document.getElementById('btnAbsen');
+    const video = document.getElementById('video');
+    const typeInput = document.getElementById('attendanceType');
+
+    if (!video || !userLocation || !currentBranch) return alert("Kamera, Lokasi, atau Data Cabang belum siap!");
+    if (!typeInput) return alert("Pilihan Masuk/Pulang tidak ditemukan di HTML!");
+
+    btn.disabled = true;
+    btn.innerText = "Proses Mengirim...";
+
+    try {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+
+        const photoBlob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.8));
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
+
+        // 1. Upload Foto
+        const { data: upData, error: upErr } = await supabaseClient.storage
+            .from('attendance-photos').upload(fileName, photoBlob);
+
+        if (upErr) throw new Error("Gagal upload foto: " + upErr.message);
+
+        const photoURL = `${SUPABASE_URL}/storage/v1/object/public/attendance-photos/${upData.path}`;
+
+        // 2. Simpan Data ke Tabel Attendance
+        // PERHATIKAN: Kita menggunakan 'notes' karena kolom 'type' tidak ada di database
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        const { error: insErr } = await supabaseClient.from('attendance').insert([{
+            user_id: user.id,
+            branch_id: currentBranch.id,
+            photo_url: photoURL,
+            status: 'Valid',
+            lat_log: `${userLocation.latitude},${userLocation.longitude}`,
+            distance_meters: getDistance(userLocation.latitude, userLocation.longitude, currentBranch.lat, currentBranch.lng),
+            notes: typeInput.value // Mengisi kolom 'notes' dengan nilai (Masuk/Pulang)
+        }]);
+
+        if (insErr) throw insErr;
+
+        alert("Presensi Berhasil Terkirim!");
+        location.reload();
+
+    } catch (err) {
+        alert("Error: " + err.message);
+        btn.disabled = false;
+        btn.innerText = "Ambil Foto & Kirim";
+    }
+}
+
+// --- 4. FUNGSI PENDUKUNG ---
+
 function setupCamera() {
     const video = document.getElementById('video');
     if (video) {
@@ -70,6 +126,7 @@ function startLocationWatch() {
     navigator.geolocation.watchPosition((pos) => {
         userLocation = pos.coords;
         if (!currentBranch) return;
+
         const dist = getDistance(userLocation.latitude, userLocation.longitude, currentBranch.lat, currentBranch.lng);
         const statusEl = document.getElementById('locationStatus');
         const btnAbsen = document.getElementById('btnAbsen');
@@ -96,11 +153,8 @@ function updateTime() {
     const now = new Date();
     const options = { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
     const timeString = now.toLocaleTimeString('id-ID', options);
-
     const timeElement = document.getElementById('current-time');
-    if (timeElement) {
-        timeElement.innerText = `WIB: ${timeString}`;
-    }
+    if (timeElement) timeElement.innerText = `WIB: ${timeString}`;
 }
 setInterval(updateTime, 1000);
 updateTime();
@@ -115,69 +169,16 @@ function getDistance(lat1, lon1, lat2, lon2) {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// --- FUNGSI SUBMIT FINAL (Hanya satu versi) ---
-async function submitAttendance() {
-    const btn = document.getElementById('btnAbsen');
-    const video = document.getElementById('video');
-
-    if (!video || !userLocation) return alert("Kamera atau Lokasi belum siap!");
-
-    btn.disabled = true;
-    btn.innerText = "Proses Mengirim...";
-
-    try {
-        const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.getContext('2d').drawImage(video, 0, 0);
-
-        const photoBlob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.8));
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
-
-        const { data: upData, error: upErr } = await supabaseClient.storage
-            .from('attendance-photos').upload(fileName, photoBlob);
-
-        if (upErr) throw new Error("Gagal upload foto: " + upErr.message);
-
-        const photoURL = `${SUPABASE_URL}/storage/v1/object/public/attendance-photos/${upData.path}`;
-
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        const { error: insErr } = await supabaseClient.from('attendance').insert([{
-            user_id: user.id,
-            branch_id: currentBranch.id,
-            type: document.getElementById('attendanceType').value,
-            photo_url: photoURL,
-            distance_meters: getDistance(userLocation.latitude, userLocation.longitude, currentBranch.lat, currentBranch.lng),
-            status: 'Valid',
-            lat_log: `${userLocation.latitude},${userLocation.longitude}`
-        }]);
-
-        if (insErr) throw insErr;
-
-        alert("Presensi Berhasil Terkirim!");
-        location.reload();
-
-    } catch (err) {
-        alert(err.message);
-        btn.disabled = false;
-        btn.innerText = "Ambil Foto & Kirim";
-    }
-}
-
 function logout() {
     supabaseClient.auth.signOut().then(() => window.location.href = 'login.html');
 }
 
-// Jalankan pengecekan auth
+// --- 5. INITIALIZATION ---
 checkAuth();
 
-// Sambungkan event listener ke tombol saat halaman dimuat
 document.addEventListener('DOMContentLoaded', () => {
     const btnAbsen = document.getElementById('btnAbsen');
     if (btnAbsen) {
         btnAbsen.addEventListener('click', submitAttendance);
     }
-
 });
-
-
