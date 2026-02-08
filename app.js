@@ -36,6 +36,16 @@ if (loginForm) {
             // Manager DAN Owner (atau role lain) diarahkan ke dashboard.html
             window.location.href = 'dashboard.html';
         }
+
+        if (profile.role === 'staff') {
+            window.location.href = 'index.html';
+        } else if (profile.role === 'manager' || profile.role === 'owner') {
+            // Owner dan Manager kita arahkan ke halaman yang sama (dashboard.html)
+            window.location.href = 'dashboard.html';
+        } else {
+            // Jika ada role lain, tetap ke dashboard agar tidak blank
+            window.location.href = 'dashboard.html';
+        }
     });
 }
 // --- 3. STAFF PAGE LOGIC ---
@@ -186,4 +196,5 @@ document.addEventListener('DOMContentLoaded', () => {
         btnAbsen.addEventListener('click', submitAttendance);
     }
 });
+
 
