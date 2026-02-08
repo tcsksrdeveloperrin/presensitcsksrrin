@@ -7,52 +7,45 @@
 
     // --- 2. LOGIC DASHBOARD ---
     async function loadDashboard() {
-        const loadingEl = document.getElementById('loadingText'); // Pastikan ada elemen ini atau hapus baris ini jika tidak ada
-        const tableBody = document.getElementById('attendanceList'); // Pastikan ID <tbody> di tabelmu adalah 'attendanceList'
-        const totalCountEl = document.getElementById('totalPresence'); // Pastikan ID angka total adalah 'totalPresence'
+        const tableBody = document.getElementById('attendanceList'); 
+        const totalCountEl = document.getElementById('totalPresence'); 
 
-        // A. Tentukan Rentang Waktu HARI INI (Mulai jam 00:00 sampai 23:59)
-        const startOfDay = new Date();
-        startOfDay.setHours(0, 0, 0, 0);
-        
-        const endOfDay = new Date();
-        endOfDay.setHours(23, 59, 59, 999);
+        // A. Tentukan Rentang Waktu HARI INI (00:00:00 sampai 23:59:59)
+        const today = new Date();
+        const start = new Date(new Date(today).setHours(0, 0, 0, 0)).toISOString();
+        const end = new Date(new Date(today).setHours(23, 59, 59, 999)).toISOString();
 
         try {
-            // B. Ambil Data Absen HARI INI + Join ke tabel Profiles untuk ambil Nama
+            // B. Ambil Data Absen HARI INI dengan Filter Tanggal
             const { data: attendanceData, error } = await supabaseClient
                 .from('attendance')
                 .select(`
                     *,
                     profiles:user_id (full_name)
                 `)
-                .gte('check_in', startOfDay.toISOString()) // Lebih besar dari jam 00:00 hari ini
-                .lte('check_in', endOfDay.toISOString())   // Lebih kecil dari jam 23:59 hari ini
+                .gte('check_in', start) // Filter: Mulai dari hari ini jam 00:00
+                .lte('check_in', end)   // Filter: Sampai hari ini jam 23:59
                 .order('check_in', { ascending: false });
 
             if (error) throw error;
 
-            // C. Update Angka Total Hadir
+            // C. Update Angka Total Hadir (Reset otomatis karena filter start/end)
             if (totalCountEl) {
                 totalCountEl.innerText = attendanceData.length;
             }
 
             // D. Render Tabel
             if (tableBody) {
-                tableBody.innerHTML = ''; // Kosongkan tabel dulu
+                tableBody.innerHTML = ''; 
                 
                 if (attendanceData.length === 0) {
                     tableBody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-500">Belum ada presensi hari ini.</td></tr>';
                 } else {
                     attendanceData.forEach(item => {
-                        // Format Waktu
                         const time = new Date(item.check_in).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
                         const name = item.profiles ? item.profiles.full_name : 'Unknown User';
-                        
-                        // Tentukan Status (Masuk/Pulang) dari notes
                         const type = item.notes || 'Hadir'; 
                         
-                        // Warna badge
                         const badgeColor = type.toLowerCase().includes('pulang') ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800';
 
                         const row = `
@@ -76,7 +69,6 @@
 
         } catch (err) {
             console.error("Error loading dashboard:", err);
-            alert("Gagal memuat data: " + err.message);
         }
     }
 
@@ -86,15 +78,17 @@
     }
 
     // --- 4. INIT ---
-    // Cek apakah user login sebagai manager
     async function checkManager() {
         const { data: { user } } = await supabaseClient.auth.getUser();
         if (!user) {
             window.location.href = 'login.html';
             return;
         }
-        // Load data pertama kali
         loadDashboard();
+        
+        // Auto-refresh data setiap 30 detik agar dashboard update otomatis
+        setInterval(loadDashboard, 30000);
     }
+    
     checkManager();
-</scrip
+</script>
