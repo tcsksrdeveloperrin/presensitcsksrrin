@@ -28,12 +28,16 @@ if (loginForm) {
         if (error) return alert("Login Gagal: " + error.message);
 
         const { data: profile } = await supabaseClient.from('profiles').select('role').eq('id', data.user.id).single();
-        if (profile.role === 'staff') window.location.href = 'index.html';
-        else if (profile.role === 'manager') window.location.href = 'dashboard.html';
-        else window.location.href = 'reports.html';
+        
+        // LOGIKA REDIRECT
+        if (profile.role === 'staff') {
+            window.location.href = 'index.html';
+        } else {
+            // Manager DAN Owner (atau role lain) diarahkan ke dashboard.html
+            window.location.href = 'dashboard.html';
+        }
     });
 }
-
 // --- 3. STAFF PAGE LOGIC ---
 if (window.location.pathname.includes('index.html') || window.location.pathname === '/' || window.location.pathname.endsWith('/')) {
     initStaffPage();
@@ -182,3 +186,4 @@ document.addEventListener('DOMContentLoaded', () => {
         btnAbsen.addEventListener('click', submitAttendance);
     }
 });
+
