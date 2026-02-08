@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="id">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,50 +9,38 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
+<body class="bg-gray-50 text-gray-800">
 
-<body class="bg-gray-100 text-gray-800">
-
-    <nav class="bg-white border-b border-gray-200 px-8 py-4 flex justify-between items-center sticky top-0 z-50">
+    <nav class="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
         <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg">TC</div>
+            <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold">TC</div>
             <div>
-                <h1 class="text-lg font-bold leading-tight">Owner Dashboard</h1>
-                <p class="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">Sukasari Central System</p>
+                <h1 class="text-lg font-bold">Owner Dashboard</h1>
+                <p class="text-[10px] text-gray-400 uppercase tracking-widest">Sukasari Central System</p>
             </div>
         </div>
-        <div class="flex items-center gap-4">
-            <button onclick="logout()" class="text-gray-400 hover:text-red-500 transition">
-                <i class="ri-logout-circle-r-line text-2xl"></i>
-            </button>
-        </div>
+        <button onclick="logout()" class="text-gray-400 hover:text-red-500 transition text-2xl">
+            <i class="ri-logout-circle-r-line"></i>
+        </button>
     </nav>
 
-    <main class="p-6 max-w-7xl mx-auto">
-        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 mb-6 flex flex-wrap gap-4 items-end justify-between">
-            <div class="flex flex-wrap gap-4">
-                <div class="w-40">
-                    <label class="block text-xs font-bold text-gray-400 uppercase mb-2">Pilih Cabang</label>
-                    <select id="filterBranch" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500">
-                        <option value="all">Semua Cabang</option>
-                        <option value="WKA Cibeusi">WKA Cibeusi</option>
-                        <option value="Buper Kiarapayung">Buper Kiarapayung</option>
-                    </select>
-                </div>
-                <div class="w-40">
-                    <label class="block text-xs font-bold text-gray-400 uppercase mb-2">Bulan</label>
-                    <input type="month" id="filterMonth" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+    <main class="p-4 max-w-7xl mx-auto">
+        <div class="bg-white p-4 rounded-2xl shadow-sm border mb-6 flex flex-wrap gap-4 items-end justify-between">
+            <div class="flex gap-4">
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Bulan</label>
+                    <input type="month" id="filterMonth" class="px-3 py-2 bg-gray-50 border rounded-xl text-sm outline-none">
                 </div>
             </div>
-
-            <button onclick="exportToExcel()" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg shadow-green-100 transition-all active:scale-95">
+            <button onclick="exportToExcel()" class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-xl text-sm font-bold flex items-center gap-2">
                 <i class="ri-file-excel-2-fill text-lg"></i> Export (.xlsx)
             </button>
         </div>
 
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-            <div class="p-6 border-b border-gray-50 flex justify-between items-center">
-                <h3 class="font-bold text-gray-700">Data Log Presensi Karyawan</h3>
-                <span id="recordCount" class="text-xs bg-gray-100 px-3 py-1 rounded-full font-medium text-gray-500">0 Records Found</span>
+        <div class="bg-white rounded-2xl shadow-sm border overflow-hidden">
+            <div class="p-4 border-b flex justify-between items-center bg-gray-50/50">
+                <h3 class="font-bold text-gray-700">Data Log Presensi</h3>
+                <span id="recordCount" class="text-xs bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full font-bold">0 Records</span>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-sm" id="reportTable">
@@ -61,37 +48,36 @@
                         <tr>
                             <th class="px-6 py-4">Nama Pegawai</th>
                             <th class="px-6 py-4">Waktu</th>
-                            <th class="px-6 py-4">Cabang</th>
                             <th class="px-6 py-4">Tipe</th>
                             <th class="px-6 py-4">Jarak</th>
-                            <th class="px-6 py-4">Status</th>
                             <th class="px-6 py-4">Foto</th>
                         </tr>
                     </thead>
-                    <tbody id="reportData" class="divide-y divide-gray-50">
-                    </tbody>
+                    <tbody id="reportData" class="divide-y divide-gray-100">
+                        </tbody>
                 </table>
             </div>
         </div>
     </main>
 
     <script>
+        // CONFIG
         const SUPABASE_URL = "https://ubcjzcczplfakodxgajg.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InViY2p6Y2N6cGxmYWtvZHhnYWpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxODMwNDYsImV4cCI6MjA4NTc1OTA0Nn0.knzmrpJOqbZkduGIvZVK4zApoZiSXqCdhMVzcgkMaBE";
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // Set input bulan ke bulan sekarang
         document.getElementById('filterMonth').value = new Date().toISOString().slice(0, 7);
 
         async function loadReportData() {
             const container = document.getElementById('reportData');
-            container.innerHTML = '<tr><td colspan="7" class="text-center py-10 animate-pulse">Mengambil data dari Supabase...</td></tr>';
+            container.innerHTML = '<tr><td colspan="5" class="text-center py-10">Memuat data...</td></tr>';
 
             try {
+                // Ambil data dengan join profile
                 const { data, error } = await supabaseClient
                     .from('attendance')
-                    .select('*, profiles(full_name), branches(name)')
-                    .order('check_in', { ascending: false }); // GANTI: dari check_time ke check_in
+                    .select('*, profiles(full_name)')
+                    .order('check_in', { ascending: false });
 
                 if (error) throw error;
 
@@ -99,44 +85,40 @@
                 container.innerHTML = '';
 
                 data.forEach(item => {
-                    const date = new Date(item.check_in).toLocaleString('id-ID'); // GANTI: check_in
-                    const attendanceType = item.notes || 'Hadir'; // GANTI: dari item.type ke item.notes
+                    const date = new Date(item.check_in).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+                    const note = item.notes || 'Hadir'; // Mengambil Masuk/Pulang dari kolom notes
                     
-                    const row = `
-                        <tr class="hover:bg-gray-50 transition-colors">
+                    container.innerHTML += `
+                        <tr class="hover:bg-gray-50">
                             <td class="px-6 py-4 font-bold text-gray-900">${item.profiles ? item.profiles.full_name : 'User'}</td>
                             <td class="px-6 py-4 text-gray-600">${date}</td>
-                            <td class="px-6 py-4 text-gray-600">${item.branches ? item.branches.name : '-'}</td>
                             <td class="px-6 py-4">
-                                <span class="px-2 py-1 ${attendanceType.includes('Masuk') ? 'bg-blue-50 text-blue-600' : 'bg-orange-50 text-orange-600'} rounded text-[10px] font-black uppercase">
-                                    ${attendanceType}
+                                <span class="px-2 py-0.5 ${note.includes('Masuk') ? 'bg-blue-50 text-blue-600' : 'bg-orange-50 text-orange-600'} rounded text-[10px] font-black uppercase">
+                                    ${note}
                                 </span>
                             </td>
                             <td class="px-6 py-4 text-gray-500">${Math.round(item.distance_meters || 0)}m</td>
-                            <td class="px-6 py-4">
-                                <span class="px-2 py-1 ${item.status === 'Valid' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'} rounded-full text-[10px] font-bold">${item.status}</span>
-                            </td>
-                            <td class="px-6 py-4 text-blue-600 font-medium cursor-pointer hover:underline" onclick="window.open('${item.photo_url}')">Lihat Foto</td>
+                            <td class="px-6 py-4 text-blue-600 font-medium cursor-pointer" onclick="window.open('${item.photo_url}', '_blank')">Lihat Foto</td>
                         </tr>
                     `;
-                    container.innerHTML += row;
                 });
             } catch (err) {
-                container.innerHTML = `<tr><td colspan="7" class="text-center py-10 text-red-500">Error: ${err.message}</td></tr>`;
+                container.innerHTML = `<tr><td colspan="5" class="text-center py-10 text-red-500">Error: ${err.message}</td></tr>`;
             }
         }
 
         function exportToExcel() {
             const table = document.getElementById("reportTable");
-            const wb = XLSX.utils.table_to_book(table, { sheet: "Laporan Presensi" });
-            const fileName = `Laporan_TC_Sukasari_${document.getElementById('filterMonth').value}.xlsx`;
-            XLSX.writeFile(wb, fileName);
+            const wb = XLSX.utils.table_to_book(table);
+            XLSX.writeFile(wb, `Laporan_Presensi_${document.getElementById('filterMonth').value}.xlsx`);
         }
 
-        function logout() {
-            supabaseClient.auth.signOut().then(() => window.location.href = 'login.html');
+        async function logout() {
+            await supabaseClient.auth.signOut();
+            window.location.href = 'login.html';
         }
 
+        // Jalankan fungsi
         loadReportData();
     </script>
 </body>
