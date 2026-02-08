@@ -10,70 +10,68 @@
         const tableBody = document.getElementById('attendanceList');
         const totalCountEl = document.getElementById('totalPresence');
     
-        // A. Tentukan Rentang Waktu HARI INI secara dinamis
-        const now = new Date();
-        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0).toISOString();
-        const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
+        // Pastikan elemen ada sebelum menjalankan script untuk cegah blank page
+        if (!tableBody || !totalCountEl) return;
+    
+        // A. Rentang Waktu Hari Ini
+        const start = new Date();
+        start.setHours(0, 0, 0, 0);
+        const end = new Date();
+        end.setHours(23, 59, 59, 999);
     
         try {
-            // B. Ambil Data Absen HARI INI + Join Profiles via user_id
-            // Pastikan nama kolom 'check_in' sesuai dengan gambar database kamu
+            // B. Ambil Data dengan Kolom yang Benar (check_in & notes)
             const { data: attendanceData, error } = await supabaseClient
                 .from('attendance')
                 .select(`
                     *,
                     profiles:user_id (full_name)
                 `)
-                .gte('check_in', startOfDay) 
-                .lte('check_in', endOfDay)
+                .gte('check_in', start.toISOString()) 
+                .lte('check_in', end.toISOString())
                 .order('check_in', { ascending: false });
     
             if (error) throw error;
     
-            // C. Update Angka Total Hadir
-            if (totalCountEl) {
-                totalCountEl.innerText = attendanceData.length;
-            }
+            // C. Update Angka Total
+            totalCountEl.innerText = attendanceData.length;
     
             // D. Render Tabel
-            if (tableBody) {
-                tableBody.innerHTML = ''; 
-                
-                if (attendanceData.length === 0) {
-                    tableBody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-500">Belum ada presensi hari ini.</td></tr>';
-                } else {
-                    attendanceData.forEach(item => {
-                        // Format waktu dari kolom check_in
-                        const time = new Date(item.check_in).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-                        const name = item.profiles ? item.profiles.full_name : 'User';
-                        const type = item.notes || 'Hadir'; // Mengambil Masuk/Pulang dari kolom notes
-                        
-                        const badgeColor = type.toLowerCase().includes('pulang') ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800';
+            tableBody.innerHTML = ''; 
+            
+            if (attendanceData.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-500">Belum ada presensi hari ini.</td></tr>';
+            } else {
+                attendanceData.forEach(item => {
+                    // Gunakan kolom 'check_in'
+                    const time = new Date(item.check_in).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                    const name = item.profiles ? item.profiles.full_name : 'Unknown';
+                    
+                    // Gunakan kolom 'notes' sebagai pengganti 'type'
+                    const attendanceNote = item.notes || 'Hadir'; 
+                    const badgeColor = attendanceNote.toLowerCase().includes('pulang') ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800';
     
-                        tableBody.innerHTML += `
-                            <tr class="border-b hover:bg-gray-50">
-                                <td class="py-3 px-4 text-sm font-medium text-gray-900">${name}</td>
-                                <td class="py-3 px-4 text-sm text-gray-500">${time}</td>
-                                <td class="py-3 px-4 text-sm">
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeColor}">
-                                        ${type}
-                                    </span>
-                                </td>
-                                <td class="py-3 px-4 text-sm text-blue-600 cursor-pointer hover:underline" onclick="window.open('${item.photo_url}', '_blank')">
-                                    Lihat Foto
-                                </td>
-                            </tr>
-                        `;
-                    });
-                }
+                    tableBody.innerHTML += `
+                        <tr class="border-b hover:bg-gray-50">
+                            <td class="py-3 px-4 text-sm font-medium text-gray-900">${name}</td>
+                            <td class="py-3 px-4 text-sm text-gray-500">${time}</td>
+                            <td class="py-3 px-4 text-sm">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeColor}">
+                                    ${attendanceNote}
+                                </span>
+                            </td>
+                            <td class="py-3 px-4 text-sm text-blue-600 cursor-pointer" onclick="window.open('${item.photo_url}', '_blank')">
+                                Lihat Foto
+                            </td>
+                        </tr>
+                    `;
+                });
             }
         } catch (err) {
             console.error("Dashboard Error:", err);
-            // Jika error, jangan biarkan blank, tampilkan pesan di tabel
-            if (tableBody) tableBody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-red-500">Gagal memuat: ${err.message}</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-red-500">Error: ${err.message}</td></tr>`;
         }
     }
-
     // --- 3. LOGOUT ---
     function logout() {
         supabaseClient.auth.signOut().then(() => window.location.href = 'login.html');
@@ -94,4 +92,5 @@
     
     checkManager();
 </script>
+
 
