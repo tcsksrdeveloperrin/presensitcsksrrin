@@ -7,33 +7,34 @@
 
     // --- 2. LOGIC DASHBOARD ---
     async function loadDashboard() {
-        const tableBody = document.getElementById('attendanceList'); 
-        const totalCountEl = document.getElementById('totalPresence'); 
-
-        // A. Tentukan Rentang Waktu HARI INI (00:00:00 sampai 23:59:59)
-        const today = new Date();
-        const start = new Date(new Date(today).setHours(0, 0, 0, 0)).toISOString();
-        const end = new Date(new Date(today).setHours(23, 59, 59, 999)).toISOString();
-
+        const tableBody = document.getElementById('attendanceList');
+        const totalCountEl = document.getElementById('totalPresence');
+    
+        // A. Tentukan Rentang Waktu HARI INI secara dinamis
+        const now = new Date();
+        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0).toISOString();
+        const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
+    
         try {
-            // B. Ambil Data Absen HARI INI dengan Filter Tanggal
+            // B. Ambil Data Absen HARI INI + Join Profiles via user_id
+            // Pastikan nama kolom 'check_in' sesuai dengan gambar database kamu
             const { data: attendanceData, error } = await supabaseClient
                 .from('attendance')
                 .select(`
                     *,
                     profiles:user_id (full_name)
                 `)
-                .gte('check_in', start) // Filter: Mulai dari hari ini jam 00:00
-                .lte('check_in', end)   // Filter: Sampai hari ini jam 23:59
+                .gte('check_in', startOfDay) 
+                .lte('check_in', endOfDay)
                 .order('check_in', { ascending: false });
-
+    
             if (error) throw error;
-
-            // C. Update Angka Total Hadir (Reset otomatis karena filter start/end)
+    
+            // C. Update Angka Total Hadir
             if (totalCountEl) {
                 totalCountEl.innerText = attendanceData.length;
             }
-
+    
             // D. Render Tabel
             if (tableBody) {
                 tableBody.innerHTML = ''; 
@@ -42,13 +43,14 @@
                     tableBody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-500">Belum ada presensi hari ini.</td></tr>';
                 } else {
                     attendanceData.forEach(item => {
+                        // Format waktu dari kolom check_in
                         const time = new Date(item.check_in).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-                        const name = item.profiles ? item.profiles.full_name : 'Unknown User';
-                        const type = item.notes || 'Hadir'; 
+                        const name = item.profiles ? item.profiles.full_name : 'User';
+                        const type = item.notes || 'Hadir'; // Mengambil Masuk/Pulang dari kolom notes
                         
                         const badgeColor = type.toLowerCase().includes('pulang') ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800';
-
-                        const row = `
+    
+                        tableBody.innerHTML += `
                             <tr class="border-b hover:bg-gray-50">
                                 <td class="py-3 px-4 text-sm font-medium text-gray-900">${name}</td>
                                 <td class="py-3 px-4 text-sm text-gray-500">${time}</td>
@@ -57,18 +59,18 @@
                                         ${type}
                                     </span>
                                 </td>
-                                <td class="py-3 px-4 text-sm text-blue-600 cursor-pointer" onclick="window.open('${item.photo_url}', '_blank')">
+                                <td class="py-3 px-4 text-sm text-blue-600 cursor-pointer hover:underline" onclick="window.open('${item.photo_url}', '_blank')">
                                     Lihat Foto
                                 </td>
                             </tr>
                         `;
-                        tableBody.innerHTML += row;
                     });
                 }
             }
-
         } catch (err) {
-            console.error("Error loading dashboard:", err);
+            console.error("Dashboard Error:", err);
+            // Jika error, jangan biarkan blank, tampilkan pesan di tabel
+            if (tableBody) tableBody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-red-500">Gagal memuat: ${err.message}</td></tr>`;
         }
     }
 
@@ -92,3 +94,4 @@
     
     checkManager();
 </script>
+
