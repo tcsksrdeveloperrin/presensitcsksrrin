@@ -15,9 +15,7 @@
 
     <nav class="bg-white border-b border-gray-200 px-8 py-4 flex justify-between items-center sticky top-0 z-50">
         <div class="flex items-center gap-3">
-            <div
-                class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg">
-                TC</div>
+            <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg">TC</div>
             <div>
                 <h1 class="text-lg font-bold leading-tight">Owner Dashboard</h1>
                 <p class="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">Sukasari Central System</p>
@@ -31,13 +29,11 @@
     </nav>
 
     <main class="p-6 max-w-7xl mx-auto">
-        <div
-            class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 mb-6 flex flex-wrap gap-4 items-end justify-between">
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 mb-6 flex flex-wrap gap-4 items-end justify-between">
             <div class="flex flex-wrap gap-4">
                 <div class="w-40">
                     <label class="block text-xs font-bold text-gray-400 uppercase mb-2">Pilih Cabang</label>
-                    <select id="filterBranch"
-                        class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+                    <select id="filterBranch" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500">
                         <option value="all">Semua Cabang</option>
                         <option value="WKA Cibeusi">WKA Cibeusi</option>
                         <option value="Buper Kiarapayung">Buper Kiarapayung</option>
@@ -45,13 +41,11 @@
                 </div>
                 <div class="w-40">
                     <label class="block text-xs font-bold text-gray-400 uppercase mb-2">Bulan</label>
-                    <input type="month" id="filterMonth"
-                        class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+                    <input type="month" id="filterMonth" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500">
                 </div>
             </div>
 
-            <button onclick="exportToExcel()"
-                class="bg-green-600 hover:bg-green-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg shadow-green-100 transition-all active:scale-95">
+            <button onclick="exportToExcel()" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg shadow-green-100 transition-all active:scale-95">
                 <i class="ri-file-excel-2-fill text-lg"></i> Export (.xlsx)
             </button>
         </div>
@@ -59,8 +53,7 @@
         <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
             <div class="p-6 border-b border-gray-50 flex justify-between items-center">
                 <h3 class="font-bold text-gray-700">Data Log Presensi Karyawan</h3>
-                <span id="recordCount" class="text-xs bg-gray-100 px-3 py-1 rounded-full font-medium text-gray-500">0
-                    Records Found</span>
+                <span id="recordCount" class="text-xs bg-gray-100 px-3 py-1 rounded-full font-medium text-gray-500">0 Records Found</span>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-sm" id="reportTable">
@@ -82,48 +75,55 @@
         </div>
     </main>
 
-    <script src="app.js"></script>
     <script>
-        // Set input bulan ke bulan sekarang secara default
+        const SUPABASE_URL = "https://ubcjzcczplfakodxgajg.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InViY2p6Y2N6cGxmYWtvZHhnYWpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxODMwNDYsImV4cCI6MjA4NTc1OTA0Nn0.knzmrpJOqbZkduGIvZVK4zApoZiSXqCdhMVzcgkMaBE";
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // Set input bulan ke bulan sekarang
         document.getElementById('filterMonth').value = new Date().toISOString().slice(0, 7);
 
-        // Load data khusus untuk halaman report
         async function loadReportData() {
             const container = document.getElementById('reportData');
             container.innerHTML = '<tr><td colspan="7" class="text-center py-10 animate-pulse">Mengambil data dari Supabase...</td></tr>';
 
-            const { data, error } = await supabaseClient
-                .from('attendance')
-                .select('*, profiles(full_name), branches(name)')
-                .order('check_time', { ascending: false });
+            try {
+                const { data, error } = await supabaseClient
+                    .from('attendance')
+                    .select('*, profiles(full_name), branches(name)')
+                    .order('check_in', { ascending: false }); // GANTI: dari check_time ke check_in
 
-            if (error) {
-                console.error(error);
-                return;
+                if (error) throw error;
+
+                document.getElementById('recordCount').innerText = `${data.length} Records Found`;
+                container.innerHTML = '';
+
+                data.forEach(item => {
+                    const date = new Date(item.check_in).toLocaleString('id-ID'); // GANTI: check_in
+                    const attendanceType = item.notes || 'Hadir'; // GANTI: dari item.type ke item.notes
+                    
+                    const row = `
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="px-6 py-4 font-bold text-gray-900">${item.profiles ? item.profiles.full_name : 'User'}</td>
+                            <td class="px-6 py-4 text-gray-600">${date}</td>
+                            <td class="px-6 py-4 text-gray-600">${item.branches ? item.branches.name : '-'}</td>
+                            <td class="px-6 py-4">
+                                <span class="px-2 py-1 ${attendanceType.includes('Masuk') ? 'bg-blue-50 text-blue-600' : 'bg-orange-50 text-orange-600'} rounded text-[10px] font-black uppercase">
+                                    ${attendanceType}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 text-gray-500">${Math.round(item.distance_meters || 0)}m</td>
+                            <td class="px-6 py-4">
+                                <span class="px-2 py-1 ${item.status === 'Valid' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'} rounded-full text-[10px] font-bold">${item.status}</span>
+                            </td>
+                            <td class="px-6 py-4 text-blue-600 font-medium cursor-pointer hover:underline" onclick="window.open('${item.photo_url}')">Lihat Foto</td>
+                        </tr>
+                    `;
+                    container.innerHTML += row;
+                });
+            } catch (err) {
+                container.innerHTML = `<tr><td colspan="7" class="text-center py-10 text-red-500">Error: ${err.message}</td></tr>`;
             }
-
-            document.getElementById('recordCount').innerText = `${data.length} Records Found`;
-            container.innerHTML = '';
-
-            data.forEach(item => {
-                const date = new Date(item.check_time).toLocaleString('id-ID');
-                const row = `
-                    <tr class="hover:bg-gray-50 transition-colors">
-                        <td class="px-6 py-4 font-bold text-gray-900">${item.profiles.full_name}</td>
-                        <td class="px-6 py-4 text-gray-600">${date}</td>
-                        <td class="px-6 py-4 text-gray-600">${item.branches.name}</td>
-                        <td class="px-6 py-4">
-                            <span class="px-2 py-1 ${item.type === 'Masuk' ? 'bg-blue-50 text-blue-600' : 'bg-orange-50 text-orange-600'} rounded text-[10px] font-black uppercase">${item.type}</span>
-                        </td>
-                        <td class="px-6 py-4 text-gray-500">${Math.round(item.distance_meters)}m</td>
-                        <td class="px-6 py-4">
-                            <span class="px-2 py-1 ${item.status === 'Valid' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'} rounded-full text-[10px] font-bold">${item.status}</span>
-                        </td>
-                        <td class="px-6 py-4 text-blue-600 font-medium cursor-pointer hover:underline" onclick="window.open('${item.photo_url}')">Lihat Foto</td>
-                    </tr>
-                `;
-                container.innerHTML += row;
-            });
         }
 
         function exportToExcel() {
@@ -133,8 +133,11 @@
             XLSX.writeFile(wb, fileName);
         }
 
+        function logout() {
+            supabaseClient.auth.signOut().then(() => window.location.href = 'login.html');
+        }
+
         loadReportData();
     </script>
 </body>
-
 </html>
