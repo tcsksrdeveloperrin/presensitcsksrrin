@@ -176,4 +176,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnAbsen) {
         btnAbsen.addEventListener('click', submitAttendance);
     }
+// Ganti baris ini di startLocationWatch:
+const dist = getDistance(userLocation.latitude, userLocation.longitude, currentBranch.lat, currentBranch.lng);
+
+// Menjadi lebih aman:
+if (!currentBranch) return;
+const dist = getDistance(userLocation.latitude, userLocation.longitude, currentBranch.lat, currentBranch.lng);
+    
 });
+
