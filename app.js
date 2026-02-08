@@ -69,6 +69,7 @@ function setupCamera() {
 function startLocationWatch() {
     navigator.geolocation.watchPosition((pos) => {
         userLocation = pos.coords;
+        if (!currentBranch) return;
         const dist = getDistance(userLocation.latitude, userLocation.longitude, currentBranch.lat, currentBranch.lng);
         const statusEl = document.getElementById('locationStatus');
         const btnAbsen = document.getElementById('btnAbsen');
@@ -176,12 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnAbsen) {
         btnAbsen.addEventListener('click', submitAttendance);
     }
-// Ganti baris ini di startLocationWatch:
-const dist = getDistance(userLocation.latitude, userLocation.longitude, currentBranch.lat, currentBranch.lng);
 
-// Menjadi lebih aman:
-if (!currentBranch) return;
-const dist = getDistance(userLocation.latitude, userLocation.longitude, currentBranch.lat, currentBranch.lng);
-    
 });
+
 
