@@ -43,7 +43,7 @@ if (loginForm) {
         const { data: profile } = await supabaseClient.from('profiles').select('role').eq('id', data.user.id).single();
         if (profile.role === 'staff') window.location.href = 'index.html';
         else if (profile.role === 'manager') window.location.href = 'dashboard.html';
-        else window.location.href = 'report.html'; // Sesuai nama file laporan owner kamu
+        else window.location.href = 'report.html'; 
     });
 }
 
@@ -133,7 +133,7 @@ function getDistance(lat1, lon1, lat2, lon2) {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// --- 6. SUBMIT ATTENDANCE (FIXED COLUMN MAPPING) ---
+// --- 6. SUBMIT ATTENDANCE (DENGAN AUTO-RENAME FOTO) ---
 async function submitAttendance() {
     const btn = document.getElementById('btnAbsen');
     const attendanceType = document.getElementById('attendanceType');
@@ -148,19 +148,40 @@ async function submitAttendance() {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         canvas.getContext('2d').drawImage(video, 0, 0);
-        const photoData = canvas.toDataURL('image/jpeg', 0.7);
+        
+        // Konversi canvas ke Blob untuk diunggah ke Storage
+        const photoBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.8));
+
+        // LOGIKA BARU: Penamaan File Otomatis
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('id-ID').replace(/\//g, '-'); 
+        const branchName = currentBranch.name.replace(/\s+/g, '-'); 
+        const userName = document.getElementById('userName').innerText.replace('Halo, ', '').replace(/\s+/g, '-');
+
+        const fileName = `${branchName}_${dateStr}_${userName}.jpg`;
+
+        // Proses Unggah ke Supabase Storage
+        const { data: upData, error: upErr } = await supabaseClient.storage
+            .from('attendance-photos')
+            .upload(fileName, photoBlob, { contentType: 'image/jpeg', upsert: true });
+
+        if (upErr) throw new Error("Gagal upload foto: " + upErr.message);
+
+        // Ambil URL publik dari file yang baru diunggah
+        const photoURL = `${SUPABASE_URL}/storage/v1/object/public/attendance-photos/${fileName}`;
 
         const { data: { user } } = await supabaseClient.auth.getUser();
         
-        // MAPPING KOLOM: notes (tipe), check_in (waktu), photo_url (foto)
+        // Simpan data ke tabel attendance
         const { error: insErr } = await supabaseClient.from('attendance').insert([{
             user_id: user.id,
             branch_id: currentBranch.id,
-            notes: attendanceType.value, // Kolom 'notes' sesuai DB terbaru
-            check_in: new Date().toISOString(), // Kolom 'check_in' sesuai DB terbaru
-            photo_url: photoData,
+            notes: attendanceType.value,
+            check_in: now.toISOString(),
+            photo_url: photoURL, // URL foto yang sudah di-rename
             distance_meters: getDistance(userLocation.latitude, userLocation.longitude, currentBranch.lat, currentBranch.lng),
-            status: 'Valid'
+            status: 'Valid',
+            lat_log: `${userLocation.latitude},${userLocation.longitude}`
         }]);
 
         if (insErr) throw insErr;
