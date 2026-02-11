@@ -64,7 +64,6 @@
             const container = document.getElementById('managerTableData');
             
             try {
-                // 1. Dapatkan info Manager
                 const { data: { user } } = await supabaseClient.auth.getUser();
                 if (!user) {
                     window.location.href = 'login.html';
@@ -77,18 +76,17 @@
                     .eq('id', user.id)
                     .single();
                 
-                if (profileError || !profile) throw new Error("Gagal memuat profil manager.");
+                if (profileError || !profile) throw new Error("Gagal memuat profil.");
 
                 document.getElementById('managerWelcome').innerText = `Halo, ${profile.full_name}`;
                 document.getElementById('branchIdentity').innerText = `Cabang: ${profile.branches?.name || 'Pusat'}`;
                 
-                // 2. Ambil data attendance HANYA untuk cabang ini
-                // Menggunakan created_at untuk waktu dan diurutkan terbaru ke terlama
+                // Menggunakan kolom check_in sesuai database Anda
                 const { data: attendance, error } = await supabaseClient
                     .from('attendance')
                     .select('*, profiles(full_name), branches(radius_meter)')
                     .eq('branch_id', profile.branch_id)
-                    .order('created_at', { ascending: false });
+                    .order('check_in', { ascending: false });
 
                 if (error) throw error;
 
@@ -96,37 +94,29 @@
                 container.innerHTML = '';
                 
                 if (attendance.length === 0) {
-                    container.innerHTML = '<tr><td colspan="5" class="p-10 text-center text-gray-400 font-medium italic">Belum ada pegawai yang absen hari ini.</td></tr>';
+                    container.innerHTML = '<tr><td colspan="5" class="p-10 text-center text-gray-400 font-medium italic">Belum ada data absen hari ini.</td></tr>';
                     return;
                 }
 
                 attendance.forEach(item => {
-                    // Konversi waktu dari created_at
-                    const time = item.created_at ? new Date(item.created_at) : new Date();
+                    const time = item.check_in ? new Date(item.check_in) : new Date();
                     const timeString = time.toLocaleString('id-ID', { hour:'2-digit', minute:'2-digit' });
                     
-                    // Cek Jarak (Radius)
                     const radiusLimit = item.branches?.radius_meter || 50;
                     const isViolation = item.distance_meters > radiusLimit;
                     
-                    // Ambil ID Singkat untuk estetika
-                    const shortId = String(item.id).slice(0, 8);
-                    
                     container.innerHTML += `
                         <tr class="hover:bg-gray-50 transition">
-                            <td class="px-6 py-4">
-                                <p class="font-bold text-gray-800">${item.profiles?.full_name || 'User'}</p>
-                                <p class="text-[9px] text-gray-400 font-mono tracking-tighter">ID: ${shortId}</p>
-                            </td>
+                            <td class="px-6 py-4 font-bold text-gray-800">${item.profiles?.full_name || 'User'}</td>
                             <td class="px-6 py-4 text-gray-500 font-medium">${timeString} WIB</td>
                             <td class="px-6 py-4">
                                 <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase ${item.notes?.includes('Masuk') ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}">
-                                    ${item.notes || 'Hadir'}
+                                    ${item.notes || '-'}
                                 </span>
                             </td>
                             <td class="px-6 py-4 font-mono ${isViolation ? 'text-red-500 font-bold' : 'text-blue-600'}">
                                 ${Math.round(item.distance_meters || 0)}m
-                                ${isViolation ? '<i class="ri-error-warning-fill ml-1" title="Di luar radius!"></i>' : ''}
+                                ${isViolation ? '<i class="ri-error-warning-fill ml-1" title="Luar Radius"></i>' : ''}
                             </td>
                             <td class="px-6 py-4 text-right">
                                 <button onclick="window.open('${item.photo_url}', '_blank')" 
@@ -138,13 +128,13 @@
                     `;
                 });
             } catch (err) {
-                console.error("Dashboard Error:", err);
-                container.innerHTML = `<tr><td colspan="5" class="p-10 text-center text-red-500 font-bold bg-red-50">Error Memuat Data: ${err.message}</td></tr>`;
+                console.error("Manager Dashboard Error:", err);
+                container.innerHTML = `<tr><td colspan="5" class="p-10 text-center text-red-500 font-bold bg-red-50">Error: ${err.message}</td></tr>`;
             }
         }
 
         async function logout() {
-            const { error } = await supabaseClient.auth.signOut();
+            await supabaseClient.auth.signOut();
             window.location.href = 'login.html';
         }
 
