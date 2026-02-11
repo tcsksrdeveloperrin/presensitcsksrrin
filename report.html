@@ -66,7 +66,7 @@
                             <th class="px-6 py-4">Waktu</th>
                             <th class="px-6 py-4">Tipe</th>
                             <th class="px-6 py-4">Jarak</th>
-                            <th class="px-6 py-4">Foto</th>
+                            <th class="px-6 py-4 text-center">Aksi</th>
                         </tr>
                     </thead>
                     <tbody id="reportData" class="divide-y divide-gray-100"></tbody>
@@ -78,9 +78,9 @@
     <div id="photoModal" class="fixed inset-0 bg-black/80 hidden flex items-center justify-center p-4 z-[100]">
         <div class="max-w-xl w-full bg-white rounded-2xl overflow-hidden shadow-2xl">
             <img id="modalImg" src="" class="w-full h-auto object-contain max-h-[80vh]">
-            <div class="p-4 flex justify-between items-center bg-white">
+            <div class="p-4 flex justify-between items-center bg-white border-t">
                 <span id="modalCaption" class="text-xs font-bold text-gray-500"></span>
-                <button onclick="closeModal()" class="bg-gray-100 px-6 py-2 rounded-xl font-bold text-sm">Tutup</button>
+                <button onclick="closeModal()" class="bg-gray-100 px-6 py-2 rounded-xl font-bold text-sm hover:bg-gray-200 transition">Tutup</button>
             </div>
         </div>
     </div>
@@ -90,6 +90,7 @@
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InViY2p6Y2N6cGxmYWtvZHhnYWpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxODMwNDYsImV4cCI6MjA4NTc1OTA0Nn0.knzmrpJOqbZkduGIvZVK4zApoZiSXqCdhMVzcgkMaBE";
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        // Set default filter ke bulan ini
         document.getElementById('filterMonth').value = new Date().toISOString().slice(0, 7);
 
         async function loadReportData() {
@@ -97,7 +98,7 @@
             container.innerHTML = '<tr><td colspan="6" class="text-center py-10">Memuat data...</td></tr>';
 
             try {
-                // Query Join 3 Tabel: Attendance -> Profiles & Branches
+                // Query Join: Attendance -> Profiles & Branches
                 const { data, error } = await supabaseClient
                     .from('attendance')
                     .select('*, profiles(full_name), branches(name, radius_meter)')
@@ -105,26 +106,32 @@
 
                 if (error) throw error;
 
-                // Statistik
+                // Update Statistik Dasar
                 document.getElementById('totalToday').innerText = data.length;
                 document.getElementById('totalValid').innerText = data.filter(d => d.distance_meters <= (d.branches?.radius_meter || 50)).length;
                 document.getElementById('totalInvalid').innerText = data.filter(d => d.distance_meters > (d.branches?.radius_meter || 50)).length;
                 document.getElementById('recordCount').innerText = `${data.length} Records`;
 
                 container.innerHTML = '';
+
                 data.forEach(item => {
                     const date = new Date(item.check_in).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
                     const isViolation = item.distance_meters > (item.branches?.radius_meter || 50);
                     const note = item.notes || 'Hadir';
-                    
+                    const displayId = String(item.id); // Konversi ID int8 ke String
+
                     container.innerHTML += `
                         <tr class="hover:bg-gray-50 transition">
                             <td class="px-6 py-4">
                                 <p class="font-bold text-gray-900">${item.profiles ? item.profiles.full_name : 'User'}</p>
-                                <p class="text-[9px] text-gray-400 uppercase tracking-tighter">${item.id.slice(0,8)}</p>
+                                <p class="text-[9px] text-gray-400 uppercase tracking-tighter">#${displayId}</p>
                             </td>
-                            <td class="px-6 py-4 text-blue-600 font-bold text-xs">${item.branches?.name || '-'}</td>
-                            <td class="px-6 py-4 text-gray-600 text-xs">${date}</td>
+                            <td class="px-6 py-4 text-blue-600 font-bold text-xs">
+                                ${item.branches?.name || '-'}
+                            </td>
+                            <td class="px-6 py-4 text-gray-600 text-xs">
+                                ${date}
+                            </td>
                             <td class="px-6 py-4">
                                 <span class="px-2 py-0.5 ${note.includes('Masuk') ? 'bg-blue-50 text-blue-600' : 'bg-orange-50 text-orange-600'} rounded text-[9px] font-black uppercase">
                                     ${note}
@@ -133,7 +140,7 @@
                             <td class="px-6 py-4 font-mono ${isViolation ? 'text-red-600 font-bold' : 'text-gray-500'}">
                                 ${Math.round(item.distance_meters || 0)}m
                             </td>
-                            <td class="px-6 py-4">
+                            <td class="px-6 py-4 text-center">
                                 <button onclick="openModal('${item.photo_url}', '${item.profiles?.full_name}')" class="text-indigo-600 hover:underline font-bold text-xs">
                                     Lihat Foto
                                 </button>
@@ -141,8 +148,9 @@
                         </tr>
                     `;
                 });
+                
             } catch (err) {
-                container.innerHTML = `<tr><td colspan="6" class="text-center py-10 text-red-500">Error: ${err.message}</td></tr>`;
+                container.innerHTML = `<tr><td colspan="6" class="text-center py-10 text-red-500 font-bold">Error: ${err.message}</td></tr>`;
             }
         }
 
@@ -159,7 +167,8 @@
         function exportToExcel() {
             const table = document.getElementById("reportTable");
             const wb = XLSX.utils.table_to_book(table);
-            XLSX.writeFile(wb, `Laporan_Presensi_Global_${document.getElementById('filterMonth').value}.xlsx`);
+            const fileName = `Laporan_Presensi_Global_${document.getElementById('filterMonth').value}.xlsx`;
+            XLSX.writeFile(wb, fileName);
         }
 
         async function logout() {
@@ -167,6 +176,7 @@
             window.location.href = 'login.html';
         }
 
+        // Jalankan saat halaman dibuka
         loadReportData();
     </script>
 </body>
