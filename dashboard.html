@@ -1,96 +1,115 @@
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-    // --- 1. CONFIGURATION ---
-    const SUPABASE_URL = "https://ubcjzcczplfakodxgajg.supabase.co";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InViY2p6Y2N6cGxmYWtvZHhnYWpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxODMwNDYsImV4cCI6MjA4NTc1OTA0Nn0.knzmrpJOqbZkduGIvZVK4zApoZiSXqCdhMVzcgkMaBE";
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manager Dashboard - TC Sukasari</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-50 text-gray-800">
 
-    // --- 2. LOGIC DASHBOARD ---
-    async function loadDashboard() {
-        const tableBody = document.getElementById('attendanceList');
-        const totalCountEl = document.getElementById('totalPresence');
-    
-        // Pastikan elemen ada sebelum menjalankan script untuk cegah blank page
-        if (!tableBody || !totalCountEl) return;
-    
-        // A. Rentang Waktu Hari Ini
-        const start = new Date();
-        start.setHours(0, 0, 0, 0);
-        const end = new Date();
-        end.setHours(23, 59, 59, 999);
-    
-        try {
-            // B. Ambil Data dengan Kolom yang Benar (check_in & notes)
-            const { data: attendanceData, error } = await supabaseClient
-                .from('attendance')
-                .select(`
-                    *,
-                    profiles:user_id (full_name)
-                `)
-                .gte('check_in', start.toISOString()) 
-                .lte('check_in', end.toISOString())
-                .order('check_in', { ascending: false });
-    
-            if (error) throw error;
-    
-            // C. Update Angka Total
-            totalCountEl.innerText = attendanceData.length;
-    
-            // D. Render Tabel
-            tableBody.innerHTML = ''; 
+    <nav class="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center text-white font-bold">M</div>
+            <div>
+                <h1 class="text-lg font-bold">Manager Dashboard</h1>
+                <p id="branchIdentity" class="text-[10px] text-gray-400 uppercase tracking-widest">Memuat Cabang...</p>
+            </div>
+        </div>
+        <button onclick="logout()" class="text-gray-400 hover:text-red-500 transition text-2xl">
+            <i class="ri-logout-circle-r-line"></i>
+        </button>
+    </nav>
+
+    <main class="p-4 max-w-7xl mx-auto">
+        <div class="bg-white p-6 rounded-2xl shadow-sm border mb-6">
+            <h2 id="managerWelcome" class="text-xl font-bold text-gray-800">Halo, Manager</h2>
+            <p class="text-sm text-gray-500">Pantau kehadiran tim di cabang Anda hari ini.</p>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border overflow-hidden">
+            <div class="p-4 border-b flex justify-between items-center bg-gray-50/50">
+                <h3 class="font-bold text-gray-700">Daftar Hadir Tim</h3>
+                <span id="recordCount" class="text-xs bg-orange-50 text-orange-600 px-3 py-1 rounded-full font-bold">0 Records</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-gray-50 text-gray-400 font-bold uppercase text-[10px]">
+                        <tr>
+                            <th class="px-6 py-4">Nama Pegawai</th>
+                            <th class="px-6 py-4">Waktu WIB</th>
+                            <th class="px-6 py-4">Status</th>
+                            <th class="px-6 py-4">Jarak</th>
+                            <th class="px-6 py-4">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="managerTableData" class="divide-y divide-gray-100"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const SUPABASE_URL = "https://ubcjzcczplfakodxgajg.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InViY2p6Y2N6cGxmYWtvZHhnYWpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxODMwNDYsImV4cCI6MjA4NTc1OTA0Nn0.knzmrpJOqbZkduGIvZVK4zApoZiSXqCdhMVzcgkMaBE";
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        async function loadManagerData() {
+            const container = document.getElementById('managerTableData');
             
-            if (attendanceData.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-500">Belum ada presensi hari ini.</td></tr>';
-            } else {
-                attendanceData.forEach(item => {
-                    // Gunakan kolom 'check_in'
-                    const time = new Date(item.check_in).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-                    const name = item.profiles ? item.profiles.full_name : 'Unknown';
+            // 1. Dapatkan info Manager (Cabang mana dia bertugas)
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            const { data: profile } = await supabaseClient.from('profiles').select('*, branches(*)').eq('id', user.id).single();
+            
+            if (profile) {
+                document.getElementById('managerWelcome').innerText = `Halo, ${profile.full_name}`;
+                document.getElementById('branchIdentity').innerText = `Cabang: ${profile.branches.name}`;
+                
+                // 2. Ambil data attendance HANYA untuk cabang ini
+                const { data: attendance, error } = await supabaseClient
+                    .from('attendance')
+                    .select('*, profiles(full_name), branches(radius_meter)')
+                    .eq('branch_id', profile.branch_id)
+                    .order('check_in', { ascending: false });
+
+                if (error) return console.error(error);
+
+                document.getElementById('recordCount').innerText = `${attendance.length} Records`;
+                container.innerHTML = '';
+                
+                attendance.forEach(item => {
+                    const date = new Date(item.check_in).toLocaleString('id-ID', { hour:'2-digit', minute:'2-digit' });
+                    const isViolation = item.distance_meters > (item.branches?.radius_meter || 50);
                     
-                    // Gunakan kolom 'notes' sebagai pengganti 'type'
-                    const attendanceNote = item.notes || 'Hadir'; 
-                    const badgeColor = attendanceNote.toLowerCase().includes('pulang') ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800';
-    
-                    tableBody.innerHTML += `
-                        <tr class="border-b hover:bg-gray-50">
-                            <td class="py-3 px-4 text-sm font-medium text-gray-900">${name}</td>
-                            <td class="py-3 px-4 text-sm text-gray-500">${time}</td>
-                            <td class="py-3 px-4 text-sm">
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeColor}">
-                                    ${attendanceNote}
+                    container.innerHTML += `
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 font-bold">${item.profiles?.full_name}</td>
+                            <td class="px-6 py-4 text-gray-500">${date}</td>
+                            <td class="px-6 py-4">
+                                <span class="px-2 py-0.5 rounded text-[9px] font-black uppercase ${item.notes.includes('Masuk') ? 'bg-green-50 text-green-600' : 'bg-orange-50 text-orange-600'}">
+                                    ${item.notes}
                                 </span>
                             </td>
-                            <td class="py-3 px-4 text-sm text-blue-600 cursor-pointer" onclick="window.open('${item.photo_url}', '_blank')">
-                                Lihat Foto
+                            <td class="px-6 py-4 font-mono ${isViolation ? 'text-red-500 font-bold' : ''}">
+                                ${Math.round(item.distance_meters)}m
+                            </td>
+                            <td class="px-6 py-4">
+                                <button onclick="window.open('${item.photo_url}', '_blank')" class="text-blue-600 font-bold text-xs">Cek Foto</button>
                             </td>
                         </tr>
                     `;
                 });
             }
-        } catch (err) {
-            console.error("Dashboard Error:", err);
-            tableBody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-red-500">Error: ${err.message}</td></tr>`;
         }
-    }
-    // --- 3. LOGOUT ---
-    function logout() {
-        supabaseClient.auth.signOut().then(() => window.location.href = 'login.html');
-    }
 
-    // --- 4. INIT ---
-    async function checkManager() {
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        if (!user) {
+        async function logout() {
+            await supabaseClient.auth.signOut();
             window.location.href = 'login.html';
-            return;
         }
-        loadDashboard();
-        
-        // Auto-refresh data setiap 30 detik agar dashboard update otomatis
-        setInterval(loadDashboard, 30000);
-    }
-    
-    checkManager();
-</script>
 
-
+        loadManagerData();
+    </script>
+</body>
+</html>
