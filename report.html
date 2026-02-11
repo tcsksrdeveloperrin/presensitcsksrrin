@@ -25,11 +25,26 @@
     </nav>
 
     <main class="p-4 max-w-7xl mx-auto">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-blue-100">
+                <p class="text-[10px] font-bold text-gray-400 uppercase">Total Presensi</p>
+                <h2 id="totalToday" class="text-2xl font-bold text-blue-600">0</h2>
+            </div>
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-green-100">
+                <p class="text-[10px] font-bold text-gray-400 uppercase">Lokasi Sesuai</p>
+                <h2 id="totalValid" class="text-2xl font-bold text-green-600">0</h2>
+            </div>
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-red-100">
+                <p class="text-[10px] font-bold text-gray-400 uppercase">Diluar Radius</p>
+                <h2 id="totalInvalid" class="text-2xl font-bold text-red-600">0</h2>
+            </div>
+        </div>
+
         <div class="bg-white p-4 rounded-2xl shadow-sm border mb-6 flex flex-wrap gap-4 items-end justify-between">
             <div class="flex gap-4">
                 <div>
                     <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Bulan</label>
-                    <input type="month" id="filterMonth" class="px-3 py-2 bg-gray-50 border rounded-xl text-sm outline-none">
+                    <input type="month" id="filterMonth" onchange="loadReportData()" class="px-3 py-2 bg-gray-50 border rounded-xl text-sm outline-none">
                 </div>
             </div>
             <button onclick="exportToExcel()" class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-xl text-sm font-bold flex items-center gap-2">
@@ -47,21 +62,30 @@
                     <thead class="bg-gray-50 text-gray-400 font-bold uppercase text-[10px]">
                         <tr>
                             <th class="px-6 py-4">Nama Pegawai</th>
+                            <th class="px-6 py-4">Cabang</th>
                             <th class="px-6 py-4">Waktu</th>
                             <th class="px-6 py-4">Tipe</th>
                             <th class="px-6 py-4">Jarak</th>
                             <th class="px-6 py-4">Foto</th>
                         </tr>
                     </thead>
-                    <tbody id="reportData" class="divide-y divide-gray-100">
-                        </tbody>
+                    <tbody id="reportData" class="divide-y divide-gray-100"></tbody>
                 </table>
             </div>
         </div>
     </main>
 
+    <div id="photoModal" class="fixed inset-0 bg-black/80 hidden flex items-center justify-center p-4 z-[100]">
+        <div class="max-w-xl w-full bg-white rounded-2xl overflow-hidden shadow-2xl">
+            <img id="modalImg" src="" class="w-full h-auto object-contain max-h-[80vh]">
+            <div class="p-4 flex justify-between items-center bg-white">
+                <span id="modalCaption" class="text-xs font-bold text-gray-500"></span>
+                <button onclick="closeModal()" class="bg-gray-100 px-6 py-2 rounded-xl font-bold text-sm">Tutup</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // CONFIG
         const SUPABASE_URL = "https://ubcjzcczplfakodxgajg.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InViY2p6Y2N6cGxmYWtvZHhnYWpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxODMwNDYsImV4cCI6MjA4NTc1OTA0Nn0.knzmrpJOqbZkduGIvZVK4zApoZiSXqCdhMVzcgkMaBE";
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -70,47 +94,72 @@
 
         async function loadReportData() {
             const container = document.getElementById('reportData');
-            container.innerHTML = '<tr><td colspan="5" class="text-center py-10">Memuat data...</td></tr>';
+            container.innerHTML = '<tr><td colspan="6" class="text-center py-10">Memuat data...</td></tr>';
 
             try {
-                // Ambil data dengan join profile
+                // Query Join 3 Tabel: Attendance -> Profiles & Branches
                 const { data, error } = await supabaseClient
                     .from('attendance')
-                    .select('*, profiles(full_name)')
+                    .select('*, profiles(full_name), branches(name, radius_meter)')
                     .order('check_in', { ascending: false });
 
                 if (error) throw error;
 
-                document.getElementById('recordCount').innerText = `${data.length} Records Found`;
-                container.innerHTML = '';
+                // Statistik
+                document.getElementById('totalToday').innerText = data.length;
+                document.getElementById('totalValid').innerText = data.filter(d => d.distance_meters <= (d.branches?.radius_meter || 50)).length;
+                document.getElementById('totalInvalid').innerText = data.filter(d => d.distance_meters > (d.branches?.radius_meter || 50)).length;
+                document.getElementById('recordCount').innerText = `${data.length} Records`;
 
+                container.innerHTML = '';
                 data.forEach(item => {
                     const date = new Date(item.check_in).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
-                    const note = item.notes || 'Hadir'; // Mengambil Masuk/Pulang dari kolom notes
+                    const isViolation = item.distance_meters > (item.branches?.radius_meter || 50);
+                    const note = item.notes || 'Hadir';
                     
                     container.innerHTML += `
-                        <tr class="hover:bg-gray-50">
-                            <td class="px-6 py-4 font-bold text-gray-900">${item.profiles ? item.profiles.full_name : 'User'}</td>
-                            <td class="px-6 py-4 text-gray-600">${date}</td>
+                        <tr class="hover:bg-gray-50 transition">
                             <td class="px-6 py-4">
-                                <span class="px-2 py-0.5 ${note.includes('Masuk') ? 'bg-blue-50 text-blue-600' : 'bg-orange-50 text-orange-600'} rounded text-[10px] font-black uppercase">
+                                <p class="font-bold text-gray-900">${item.profiles ? item.profiles.full_name : 'User'}</p>
+                                <p class="text-[9px] text-gray-400 uppercase tracking-tighter">${item.id.slice(0,8)}</p>
+                            </td>
+                            <td class="px-6 py-4 text-blue-600 font-bold text-xs">${item.branches?.name || '-'}</td>
+                            <td class="px-6 py-4 text-gray-600 text-xs">${date}</td>
+                            <td class="px-6 py-4">
+                                <span class="px-2 py-0.5 ${note.includes('Masuk') ? 'bg-blue-50 text-blue-600' : 'bg-orange-50 text-orange-600'} rounded text-[9px] font-black uppercase">
                                     ${note}
                                 </span>
                             </td>
-                            <td class="px-6 py-4 text-gray-500">${Math.round(item.distance_meters || 0)}m</td>
-                            <td class="px-6 py-4 text-blue-600 font-medium cursor-pointer" onclick="window.open('${item.photo_url}', '_blank')">Lihat Foto</td>
+                            <td class="px-6 py-4 font-mono ${isViolation ? 'text-red-600 font-bold' : 'text-gray-500'}">
+                                ${Math.round(item.distance_meters || 0)}m
+                            </td>
+                            <td class="px-6 py-4">
+                                <button onclick="openModal('${item.photo_url}', '${item.profiles?.full_name}')" class="text-indigo-600 hover:underline font-bold text-xs">
+                                    Lihat Foto
+                                </button>
+                            </td>
                         </tr>
                     `;
                 });
             } catch (err) {
-                container.innerHTML = `<tr><td colspan="5" class="text-center py-10 text-red-500">Error: ${err.message}</td></tr>`;
+                container.innerHTML = `<tr><td colspan="6" class="text-center py-10 text-red-500">Error: ${err.message}</td></tr>`;
             }
+        }
+
+        function openModal(url, name) {
+            document.getElementById('modalImg').src = url;
+            document.getElementById('modalCaption').innerText = "Bukti Foto: " + name;
+            document.getElementById('photoModal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('photoModal').classList.add('hidden');
         }
 
         function exportToExcel() {
             const table = document.getElementById("reportTable");
             const wb = XLSX.utils.table_to_book(table);
-            XLSX.writeFile(wb, `Laporan_Presensi_${document.getElementById('filterMonth').value}.xlsx`);
+            XLSX.writeFile(wb, `Laporan_Presensi_Global_${document.getElementById('filterMonth').value}.xlsx`);
         }
 
         async function logout() {
@@ -118,7 +167,6 @@
             window.location.href = 'login.html';
         }
 
-        // Jalankan fungsi
         loadReportData();
     </script>
 </body>
