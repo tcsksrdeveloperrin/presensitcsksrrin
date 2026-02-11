@@ -10,7 +10,6 @@ let currentBranch = null;
 async function checkAuth() {
     const { data: { user } } = await supabaseClient.auth.getUser();
     const currentPage = window.location.pathname;
-
     if (!user && !currentPage.includes('login.html')) {
         window.location.href = 'login.html';
     }
@@ -47,7 +46,7 @@ if (loginForm) {
     });
 }
 
-// --- 3. STAFF PAGE LOGIC (Hanya jalan jika ada elemen video) ---
+// --- 3. STAFF PAGE LOGIC ---
 const video = document.getElementById('video');
 if (video) {
     initStaffPage();
@@ -65,7 +64,6 @@ async function initStaffPage() {
         document.getElementById('userName').innerText = `Halo, ${profile.full_name}`;
         document.getElementById('branchName').innerText = `Cabang: ${profile.branches.name}`;
         currentBranch = profile.branches;
-
         setupCamera();
         startLocationWatch();
     }
@@ -81,7 +79,6 @@ function setupCamera() {
 
 function startLocationWatch() {
     if (!navigator.geolocation) return;
-    
     navigator.geolocation.watchPosition((pos) => {
         userLocation = pos.coords;
         const dist = getDistance(userLocation.latitude, userLocation.longitude, currentBranch.lat, currentBranch.lng);
@@ -89,9 +86,7 @@ function startLocationWatch() {
         const btnAbsen = document.getElementById('btnAbsen');
         const coordsWatermark = document.getElementById('coordsWatermark');
 
-        if (coordsWatermark) {
-            coordsWatermark.innerText = `GPS: ${userLocation.latitude.toFixed(5)}, ${userLocation.longitude.toFixed(5)}`;
-        }
+        if (coordsWatermark) coordsWatermark.innerText = `GPS: ${userLocation.latitude.toFixed(5)}, ${userLocation.longitude.toFixed(5)}`;
 
         if (dist <= currentBranch.radius_meter) {
             statusEl.innerText = "Lokasi Sesuai (Siap Absen)";
@@ -111,13 +106,12 @@ function startLocationWatch() {
     }, err => console.error(err), { enableHighAccuracy: true });
 }
 
-// --- 4. TIME LOGIC (WIB) ---
+// --- 4. TIME LOGIC ---
 function updateTime() {
     const timeElement = document.getElementById('current-time');
     if (timeElement) {
         const now = new Date();
-        const timeString = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        timeElement.innerText = `WIB: ${timeString}`;
+        timeElement.innerText = `WIB: ${now.toLocaleTimeString('id-ID')}`;
     }
 }
 setInterval(updateTime, 1000);
@@ -133,7 +127,7 @@ function getDistance(lat1, lon1, lat2, lon2) {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// --- 6. SUBMIT ATTENDANCE (DENGAN AUTO-RENAME FOTO) ---
+// --- 6. SUBMIT ATTENDANCE (FIXED PHOTO NAMING) ---
 async function submitAttendance() {
     const btn = document.getElementById('btnAbsen');
     const attendanceType = document.getElementById('attendanceType');
@@ -149,44 +143,39 @@ async function submitAttendance() {
         canvas.height = video.videoHeight;
         canvas.getContext('2d').drawImage(video, 0, 0);
         
-        // Konversi canvas ke Blob untuk diunggah ke Storage
         const photoBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.8));
 
-        // LOGIKA BARU: Penamaan File Otomatis
+        // --- LOGIKA PENAMAAN FOTO OTOMATIS ---
         const now = new Date();
-        const dateStr = now.toLocaleDateString('id-ID').replace(/\//g, '-'); 
-        const branchName = currentBranch.name.replace(/\s+/g, '-'); 
-        const userName = document.getElementById('userName').innerText.replace('Halo, ', '').replace(/\s+/g, '-');
+        const dateStr = now.toISOString().split('T')[0]; 
+        const branchName = currentBranch.name.replace(/\s+/g, '_'); 
+        const userName = document.getElementById('userName').innerText.replace('Halo, ', '').trim().replace(/\s+/g, '_');
+        const timeStr = now.getHours() + "-" + now.getMinutes() + "-" + now.getSeconds();
 
-        const fileName = `${branchName}_${dateStr}_${userName}.jpg`;
+        const fileName = `${branchName}_${dateStr}_${userName}_${timeStr}.jpg`;
 
-        // Proses Unggah ke Supabase Storage
         const { data: upData, error: upErr } = await supabaseClient.storage
             .from('attendance-photos')
             .upload(fileName, photoBlob, { contentType: 'image/jpeg', upsert: true });
 
         if (upErr) throw new Error("Gagal upload foto: " + upErr.message);
 
-        // Ambil URL publik dari file yang baru diunggah
         const photoURL = `${SUPABASE_URL}/storage/v1/object/public/attendance-photos/${fileName}`;
-
         const { data: { user } } = await supabaseClient.auth.getUser();
         
-        // Simpan data ke tabel attendance
         const { error: insErr } = await supabaseClient.from('attendance').insert([{
             user_id: user.id,
             branch_id: currentBranch.id,
             notes: attendanceType.value,
             check_in: now.toISOString(),
-            photo_url: photoURL, // URL foto yang sudah di-rename
+            photo_url: photoURL,
             distance_meters: getDistance(userLocation.latitude, userLocation.longitude, currentBranch.lat, currentBranch.lng),
             status: 'Valid',
             lat_log: `${userLocation.latitude},${userLocation.longitude}`
         }]);
 
         if (insErr) throw insErr;
-
-        alert("Presensi " + attendanceType.value + " Berhasil!");
+        alert("Presensi Berhasil!");
         location.reload();
 
     } catch (err) {
