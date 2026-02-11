@@ -26,35 +26,36 @@
 
     <main class="p-4 max-w-7xl mx-auto">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div class="bg-white p-4 rounded-2xl shadow-sm border border-blue-100">
-                <p class="text-[10px] font-bold text-gray-400 uppercase">Total Presensi</p>
-                <h2 id="totalToday" class="text-2xl font-bold text-blue-600">0</h2>
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-blue-100">
+                <p class="text-[10px] font-black text-gray-400 uppercase tracking-wider">Total Presensi</p>
+                <h2 id="totalToday" class="text-3xl font-bold text-indigo-600">0</h2>
             </div>
-            <div class="bg-white p-4 rounded-2xl shadow-sm border border-green-100">
-                <p class="text-[10px] font-bold text-gray-400 uppercase">Lokasi Sesuai</p>
-                <h2 id="totalValid" class="text-2xl font-bold text-green-600">0</h2>
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-green-100">
+                <p class="text-[10px] font-black text-gray-400 uppercase tracking-wider">Lokasi Sesuai</p>
+                <h2 id="totalValid" class="text-3xl font-bold text-green-600">0</h2>
             </div>
-            <div class="bg-white p-4 rounded-2xl shadow-sm border border-red-100">
-                <p class="text-[10px] font-bold text-gray-400 uppercase">Diluar Radius</p>
-                <h2 id="totalInvalid" class="text-2xl font-bold text-red-600">0</h2>
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-red-100">
+                <p class="text-[10px] font-black text-gray-400 uppercase tracking-wider">Diluar Radius</p>
+                <h2 id="totalInvalid" class="text-3xl font-bold text-red-600">0</h2>
             </div>
         </div>
 
         <div class="bg-white p-4 rounded-2xl shadow-sm border mb-6 flex flex-wrap gap-4 items-end justify-between">
             <div class="flex gap-4">
                 <div>
-                    <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Bulan</label>
-                    <input type="month" id="filterMonth" onchange="loadReportData()" class="px-3 py-2 bg-gray-50 border rounded-xl text-sm outline-none">
+                    <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Pilih Bulan</label>
+                    <input type="month" id="filterMonth" onchange="loadReportData()" 
+                        class="px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition">
                 </div>
             </div>
-            <button onclick="exportToExcel()" class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-xl text-sm font-bold flex items-center gap-2">
-                <i class="ri-file-excel-2-fill text-lg"></i> Export (.xlsx)
+            <button onclick="exportToExcel()" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg shadow-green-100 transition active:scale-95">
+                <i class="ri-file-excel-2-fill text-lg"></i> Export Excel
             </button>
         </div>
 
         <div class="bg-white rounded-2xl shadow-sm border overflow-hidden">
             <div class="p-4 border-b flex justify-between items-center bg-gray-50/50">
-                <h3 class="font-bold text-gray-700">Data Log Presensi</h3>
+                <h3 class="font-bold text-gray-700">Data Log Presensi Global</h3>
                 <span id="recordCount" class="text-xs bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full font-bold">0 Records</span>
             </div>
             <div class="overflow-x-auto">
@@ -64,23 +65,33 @@
                             <th class="px-6 py-4">Nama Pegawai</th>
                             <th class="px-6 py-4">Cabang</th>
                             <th class="px-6 py-4">Waktu</th>
-                            <th class="px-6 py-4">Tipe</th>
+                            <th class="px-6 py-4">Status</th>
                             <th class="px-6 py-4">Jarak</th>
                             <th class="px-6 py-4 text-center">Aksi</th>
                         </tr>
                     </thead>
-                    <tbody id="reportData" class="divide-y divide-gray-100"></tbody>
+                    <tbody id="reportData" class="divide-y divide-gray-100">
+                        <tr><td colspan="6" class="p-20 text-center animate-pulse text-gray-400">Menarik data dari server...</td></tr>
+                    </tbody>
                 </table>
             </div>
         </div>
     </main>
 
-    <div id="photoModal" class="fixed inset-0 bg-black/80 hidden flex items-center justify-center p-4 z-[100]">
-        <div class="max-w-xl w-full bg-white rounded-2xl overflow-hidden shadow-2xl">
-            <img id="modalImg" src="" class="w-full h-auto object-contain max-h-[80vh]">
-            <div class="p-4 flex justify-between items-center bg-white border-t">
-                <span id="modalCaption" class="text-xs font-bold text-gray-500"></span>
-                <button onclick="closeModal()" class="bg-gray-100 px-6 py-2 rounded-xl font-bold text-sm hover:bg-gray-200 transition">Tutup</button>
+    <div id="photoModal" class="fixed inset-0 bg-black/90 hidden flex items-center justify-center p-4 z-[100] backdrop-blur-sm">
+        <div class="max-w-xl w-full bg-white rounded-3xl overflow-hidden shadow-2xl transition-all">
+            <div class="relative">
+                <img id="modalImg" src="" class="w-full h-96 object-cover">
+                <button onclick="closeModal()" class="absolute top-4 right-4 bg-black/50 text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-black transition">
+                    <i class="ri-close-line text-xl"></i>
+                </button>
+            </div>
+            <div class="p-6 bg-white flex justify-between items-center">
+                <div>
+                    <p id="modalCaption" class="text-sm font-black text-gray-800"></p>
+                    <p class="text-xs text-gray-400 uppercase tracking-widest mt-1">Bukti Presensi Pegawai</p>
+                </div>
+                <button onclick="closeModal()" class="bg-indigo-50 text-indigo-600 px-6 py-2 rounded-xl font-bold text-sm hover:bg-indigo-100 transition">Selesai</button>
             </div>
         </div>
     </div>
@@ -90,15 +101,16 @@
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InViY2p6Y2N6cGxmYWtvZHhnYWpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxODMwNDYsImV4cCI6MjA4NTc1OTA0Nn0.knzmrpJOqbZkduGIvZVK4zApoZiSXqCdhMVzcgkMaBE";
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // Set default filter ke bulan ini
+        // Inisialisasi: Set filter ke bulan berjalan
         document.getElementById('filterMonth').value = new Date().toISOString().slice(0, 7);
 
         async function loadReportData() {
             const container = document.getElementById('reportData');
-            container.innerHTML = '<tr><td colspan="6" class="text-center py-10">Memuat data...</td></tr>';
-
+            const selectedMonth = document.getElementById('filterMonth').value; // Format: "YYYY-MM"
+            
             try {
-                // Query Join: Attendance -> Profiles & Branches
+                // Query: Ambil semua data attendance
+                // Join dengan profiles (nama) dan branches (nama cabang & radius)
                 const { data, error } = await supabaseClient
                     .from('attendance')
                     .select('*, profiles(full_name), branches(name, radius_meter)')
@@ -106,42 +118,62 @@
 
                 if (error) throw error;
 
-                // Update Statistik Dasar
-                document.getElementById('totalToday').innerText = data.length;
-                document.getElementById('totalValid').innerText = data.filter(d => d.distance_meters <= (d.branches?.radius_meter || 50)).length;
-                document.getElementById('totalInvalid').innerText = data.filter(d => d.distance_meters > (d.branches?.radius_meter || 50)).length;
-                document.getElementById('recordCount').innerText = `${data.length} Records`;
+                // FILTER DATA BERDASARKAN BULAN (Sisi Client untuk fleksibilitas)
+                const filteredData = data.filter(item => {
+                    return item.check_in.startsWith(selectedMonth);
+                });
+
+                // Update Statistik
+                const validCount = filteredData.filter(d => d.distance_meters <= (d.branches?.radius_meter || 50)).length;
+                const invalidCount = filteredData.length - validCount;
+
+                document.getElementById('totalToday').innerText = filteredData.length;
+                document.getElementById('totalValid').innerText = validCount;
+                document.getElementById('totalInvalid').innerText = invalidCount;
+                document.getElementById('recordCount').innerText = `${filteredData.length} Records`;
 
                 container.innerHTML = '';
 
-                data.forEach(item => {
-                    const date = new Date(item.check_in).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
-                    const isViolation = item.distance_meters > (item.branches?.radius_meter || 50);
-                    const note = item.notes || 'Hadir';
-                    const displayId = String(item.id); // Konversi ID int8 ke String
+                if (filteredData.length === 0) {
+                    container.innerHTML = '<tr><td colspan="6" class="p-10 text-center text-gray-400 italic">Tidak ada data untuk bulan ini.</td></tr>';
+                    return;
+                }
+
+                filteredData.forEach(item => {
+                    const dateObj = new Date(item.check_in);
+                    const formattedDate = dateObj.toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+                    
+                    const radiusLimit = item.branches?.radius_meter || 50;
+                    const isViolation = item.distance_meters > radiusLimit;
+                    const statusText = item.notes || 'Hadir';
+                    const shortId = String(item.id).slice(-5);
 
                     container.innerHTML += `
-                        <tr class="hover:bg-gray-50 transition">
+                        <tr class="hover:bg-gray-50 transition border-b border-gray-100 last:border-0">
                             <td class="px-6 py-4">
-                                <p class="font-bold text-gray-900">${item.profiles ? item.profiles.full_name : 'User'}</p>
-                                <p class="text-[9px] text-gray-400 uppercase tracking-tighter">#${displayId}</p>
-                            </td>
-                            <td class="px-6 py-4 text-blue-600 font-bold text-xs">
-                                ${item.branches?.name || '-'}
-                            </td>
-                            <td class="px-6 py-4 text-gray-600 text-xs">
-                                ${date}
+                                <p class="font-bold text-gray-900">${item.profiles?.full_name || 'Tanpa Nama'}</p>
+                                <p class="text-[9px] text-gray-400 font-mono italic">ID: ...${shortId}</p>
                             </td>
                             <td class="px-6 py-4">
-                                <span class="px-2 py-0.5 ${note.includes('Masuk') ? 'bg-blue-50 text-blue-600' : 'bg-orange-50 text-orange-600'} rounded text-[9px] font-black uppercase">
-                                    ${note}
+                                <span class="bg-blue-50 text-blue-700 px-2 py-1 rounded text-[10px] font-bold">
+                                    ${item.branches?.name || 'Cabang Luar'}
                                 </span>
                             </td>
-                            <td class="px-6 py-4 font-mono ${isViolation ? 'text-red-600 font-bold' : 'text-gray-500'}">
+                            <td class="px-6 py-4 text-gray-600 text-xs font-medium">
+                                ${formattedDate}
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="px-2 py-0.5 rounded text-[9px] font-black uppercase ${statusText.includes('Masuk') ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}">
+                                    ${statusText}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 font-mono ${isViolation ? 'text-red-500 font-black' : 'text-gray-500'}">
                                 ${Math.round(item.distance_meters || 0)}m
+                                ${isViolation ? '⚠️' : ''}
                             </td>
                             <td class="px-6 py-4 text-center">
-                                <button onclick="openModal('${item.photo_url}', '${item.profiles?.full_name}')" class="text-indigo-600 hover:underline font-bold text-xs">
+                                <button onclick="openModal('${item.photo_url}', '${item.profiles?.full_name}')" 
+                                    class="text-indigo-600 hover:text-indigo-900 font-black text-xs uppercase tracking-tighter">
                                     Lihat Foto
                                 </button>
                             </td>
@@ -150,13 +182,15 @@
                 });
                 
             } catch (err) {
-                container.innerHTML = `<tr><td colspan="6" class="text-center py-10 text-red-500 font-bold">Error: ${err.message}</td></tr>`;
+                console.error("Owner Report Error:", err);
+                container.innerHTML = `<tr><td colspan="6" class="p-10 text-center text-red-500 font-bold bg-red-50">Gagal Memuat Laporan: ${err.message}</td></tr>`;
             }
         }
 
         function openModal(url, name) {
+            if(!url) return alert("Foto tidak tersedia");
             document.getElementById('modalImg').src = url;
-            document.getElementById('modalCaption').innerText = "Bukti Foto: " + name;
+            document.getElementById('modalCaption').innerText = name;
             document.getElementById('photoModal').classList.remove('hidden');
         }
 
@@ -167,8 +201,8 @@
         function exportToExcel() {
             const table = document.getElementById("reportTable");
             const wb = XLSX.utils.table_to_book(table);
-            const fileName = `Laporan_Presensi_Global_${document.getElementById('filterMonth').value}.xlsx`;
-            XLSX.writeFile(wb, fileName);
+            const selectedMonth = document.getElementById('filterMonth').value;
+            XLSX.writeFile(wb, `Laporan_Global_${selectedMonth}.xlsx`);
         }
 
         async function logout() {
@@ -176,7 +210,6 @@
             window.location.href = 'login.html';
         }
 
-        // Jalankan saat halaman dibuka
         loadReportData();
     </script>
 </body>
