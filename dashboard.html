@@ -42,10 +42,14 @@
                             <th class="px-6 py-4">Waktu WIB</th>
                             <th class="px-6 py-4">Status</th>
                             <th class="px-6 py-4">Jarak</th>
-                            <th class="px-6 py-4">Aksi</th>
+                            <th class="px-6 py-4 text-right">Aksi</th>
                         </tr>
                     </thead>
-                    <tbody id="managerTableData" class="divide-y divide-gray-100"></tbody>
+                    <tbody id="managerTableData" class="divide-y divide-gray-100">
+                        <tr>
+                            <td colspan="5" class="p-10 text-center text-gray-400 animate-pulse">Memuat data absensi...</td>
+                        </tr>
+                    </tbody>
                 </table>
             </div>
         </div>
@@ -59,56 +63,92 @@
         async function loadManagerData() {
             const container = document.getElementById('managerTableData');
             
-            // 1. Dapatkan info Manager (Cabang mana dia bertugas)
-            const { data: { user } } = await supabaseClient.auth.getUser();
-            const { data: profile } = await supabaseClient.from('profiles').select('*, branches(*)').eq('id', user.id).single();
-            
-            if (profile) {
+            try {
+                // 1. Dapatkan info Manager
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                if (!user) {
+                    window.location.href = 'login.html';
+                    return;
+                }
+
+                const { data: profile, error: profileError } = await supabaseClient
+                    .from('profiles')
+                    .select('*, branches(*)')
+                    .eq('id', user.id)
+                    .single();
+                
+                if (profileError || !profile) throw new Error("Gagal memuat profil manager.");
+
                 document.getElementById('managerWelcome').innerText = `Halo, ${profile.full_name}`;
-                document.getElementById('branchIdentity').innerText = `Cabang: ${profile.branches.name}`;
+                document.getElementById('branchIdentity').innerText = `Cabang: ${profile.branches?.name || 'Pusat'}`;
                 
                 // 2. Ambil data attendance HANYA untuk cabang ini
+                // Menggunakan created_at untuk waktu dan diurutkan terbaru ke terlama
                 const { data: attendance, error } = await supabaseClient
                     .from('attendance')
                     .select('*, profiles(full_name), branches(radius_meter)')
                     .eq('branch_id', profile.branch_id)
-                    .order('check_in', { ascending: false });
+                    .order('created_at', { ascending: false });
 
-                if (error) return console.error(error);
+                if (error) throw error;
 
                 document.getElementById('recordCount').innerText = `${attendance.length} Records`;
                 container.innerHTML = '';
                 
+                if (attendance.length === 0) {
+                    container.innerHTML = '<tr><td colspan="5" class="p-10 text-center text-gray-400 font-medium italic">Belum ada pegawai yang absen hari ini.</td></tr>';
+                    return;
+                }
+
                 attendance.forEach(item => {
-                    const date = new Date(item.check_in).toLocaleString('id-ID', { hour:'2-digit', minute:'2-digit' });
-                    const isViolation = item.distance_meters > (item.branches?.radius_meter || 50);
+                    // Konversi waktu dari created_at
+                    const time = item.created_at ? new Date(item.created_at) : new Date();
+                    const timeString = time.toLocaleString('id-ID', { hour:'2-digit', minute:'2-digit' });
+                    
+                    // Cek Jarak (Radius)
+                    const radiusLimit = item.branches?.radius_meter || 50;
+                    const isViolation = item.distance_meters > radiusLimit;
+                    
+                    // Ambil ID Singkat untuk estetika
+                    const shortId = String(item.id).slice(0, 8);
                     
                     container.innerHTML += `
-                        <tr class="hover:bg-gray-50">
-                            <td class="px-6 py-4 font-bold">${item.profiles?.full_name}</td>
-                            <td class="px-6 py-4 text-gray-500">${date}</td>
+                        <tr class="hover:bg-gray-50 transition">
                             <td class="px-6 py-4">
-                                <span class="px-2 py-0.5 rounded text-[9px] font-black uppercase ${item.notes.includes('Masuk') ? 'bg-green-50 text-green-600' : 'bg-orange-50 text-orange-600'}">
-                                    ${item.notes}
+                                <p class="font-bold text-gray-800">${item.profiles?.full_name || 'User'}</p>
+                                <p class="text-[9px] text-gray-400 font-mono tracking-tighter">ID: ${shortId}</p>
+                            </td>
+                            <td class="px-6 py-4 text-gray-500 font-medium">${timeString} WIB</td>
+                            <td class="px-6 py-4">
+                                <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase ${item.notes?.includes('Masuk') ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}">
+                                    ${item.notes || 'Hadir'}
                                 </span>
                             </td>
-                            <td class="px-6 py-4 font-mono ${isViolation ? 'text-red-500 font-bold' : ''}">
-                                ${Math.round(item.distance_meters)}m
+                            <td class="px-6 py-4 font-mono ${isViolation ? 'text-red-500 font-bold' : 'text-blue-600'}">
+                                ${Math.round(item.distance_meters || 0)}m
+                                ${isViolation ? '<i class="ri-error-warning-fill ml-1" title="Di luar radius!"></i>' : ''}
                             </td>
-                            <td class="px-6 py-4">
-                                <button onclick="window.open('${item.photo_url}', '_blank')" class="text-blue-600 font-bold text-xs">Cek Foto</button>
+                            <td class="px-6 py-4 text-right">
+                                <button onclick="window.open('${item.photo_url}', '_blank')" 
+                                    class="bg-gray-100 hover:bg-blue-600 hover:text-white text-gray-600 px-4 py-2 rounded-xl font-bold text-xs transition-all active:scale-95">
+                                    Cek Foto
+                                </button>
                             </td>
                         </tr>
                     `;
                 });
+            } catch (err) {
+                console.error("Dashboard Error:", err);
+                container.innerHTML = `<tr><td colspan="5" class="p-10 text-center text-red-500 font-bold bg-red-50">Error Memuat Data: ${err.message}</td></tr>`;
             }
         }
 
         async function logout() {
-            await supabaseClient.auth.signOut();
+            const { error } = await supabaseClient.auth.signOut();
             window.location.href = 'login.html';
         }
 
+        // Jalankan pemuatan data
         loadManagerData();
     </script>
 </body>
