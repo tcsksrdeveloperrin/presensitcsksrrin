@@ -101,16 +101,13 @@
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InViY2p6Y2N6cGxmYWtvZHhnYWpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxODMwNDYsImV4cCI6MjA4NTc1OTA0Nn0.knzmrpJOqbZkduGIvZVK4zApoZiSXqCdhMVzcgkMaBE";
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // Inisialisasi: Set filter ke bulan berjalan
         document.getElementById('filterMonth').value = new Date().toISOString().slice(0, 7);
 
         async function loadReportData() {
             const container = document.getElementById('reportData');
-            const selectedMonth = document.getElementById('filterMonth').value; // Format: "YYYY-MM"
+            const selectedMonth = document.getElementById('filterMonth').value; 
             
             try {
-                // Query: Ambil semua data attendance
-                // Join dengan profiles (nama) dan branches (nama cabang & radius)
                 const { data, error } = await supabaseClient
                     .from('attendance')
                     .select('*, profiles(full_name), branches(name, radius_meter)')
@@ -118,12 +115,8 @@
 
                 if (error) throw error;
 
-                // FILTER DATA BERDASARKAN BULAN (Sisi Client untuk fleksibilitas)
-                const filteredData = data.filter(item => {
-                    return item.check_in.startsWith(selectedMonth);
-                });
+                const filteredData = data.filter(item => item.check_in.startsWith(selectedMonth));
 
-                // Update Statistik
                 const validCount = filteredData.filter(d => d.distance_meters <= (d.branches?.radius_meter || 50)).length;
                 const invalidCount = filteredData.length - validCount;
 
@@ -133,7 +126,6 @@
                 document.getElementById('recordCount').innerText = `${filteredData.length} Records`;
 
                 container.innerHTML = '';
-
                 if (filteredData.length === 0) {
                     container.innerHTML = '<tr><td colspan="6" class="p-10 text-center text-gray-400 italic">Tidak ada data untuk bulan ini.</td></tr>';
                     return;
@@ -142,48 +134,32 @@
                 filteredData.forEach(item => {
                     const dateObj = new Date(item.check_in);
                     const formattedDate = dateObj.toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
-                    
                     const radiusLimit = item.branches?.radius_meter || 50;
                     const isViolation = item.distance_meters > radiusLimit;
                     const statusText = item.notes || 'Hadir';
-                    const shortId = String(item.id).slice(-5);
 
                     container.innerHTML += `
                         <tr class="hover:bg-gray-50 transition border-b border-gray-100 last:border-0">
                             <td class="px-6 py-4">
                                 <p class="font-bold text-gray-900">${item.profiles?.full_name || 'Tanpa Nama'}</p>
-                                <p class="text-[9px] text-gray-400 font-mono italic">ID: ...${shortId}</p>
                             </td>
                             <td class="px-6 py-4">
-                                <span class="bg-blue-50 text-blue-700 px-2 py-1 rounded text-[10px] font-bold">
-                                    ${item.branches?.name || 'Cabang Luar'}
-                                </span>
+                                <span class="bg-blue-50 text-blue-700 px-2 py-1 rounded text-[10px] font-bold">${item.branches?.name || 'Cabang Luar'}</span>
                             </td>
-                            <td class="px-6 py-4 text-gray-600 text-xs font-medium">
-                                ${formattedDate}
-                            </td>
+                            <td class="px-6 py-4 text-gray-600 text-xs font-medium">${formattedDate}</td>
                             <td class="px-6 py-4">
-                                <span class="px-2 py-0.5 rounded text-[9px] font-black uppercase ${statusText.includes('Masuk') ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}">
-                                    ${statusText}
-                                </span>
+                                <span class="px-2 py-0.5 rounded text-[9px] font-black uppercase ${statusText.includes('Masuk') ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}">${statusText}</span>
                             </td>
                             <td class="px-6 py-4 font-mono ${isViolation ? 'text-red-500 font-black' : 'text-gray-500'}">
-                                ${Math.round(item.distance_meters || 0)}m
-                                ${isViolation ? '⚠️' : ''}
+                                ${Math.round(item.distance_meters || 0)}m ${isViolation ? '⚠️' : ''}
                             </td>
                             <td class="px-6 py-4 text-center">
-                                <button onclick="openModal('${item.photo_url}', '${item.profiles?.full_name}')" 
-                                    class="text-indigo-600 hover:text-indigo-900 font-black text-xs uppercase tracking-tighter">
-                                    Lihat Foto
-                                </button>
+                                <button onclick="openModal('${item.photo_url}', '${item.profiles?.full_name}')" class="text-indigo-600 hover:text-indigo-900 font-black text-xs uppercase tracking-tighter">Lihat Foto</button>
                             </td>
-                        </tr>
-                    `;
+                        </tr>`;
                 });
-                
             } catch (err) {
-                console.error("Owner Report Error:", err);
-                container.innerHTML = `<tr><td colspan="6" class="p-10 text-center text-red-500 font-bold bg-red-50">Gagal Memuat Laporan: ${err.message}</td></tr>`;
+                container.innerHTML = `<tr><td colspan="6" class="p-10 text-center text-red-500 font-bold">Gagal: ${err.message}</td></tr>`;
             }
         }
 
