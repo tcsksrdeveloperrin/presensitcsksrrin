@@ -3,24 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Presensi Mobile</title>
+    <title>Presensi Mobile - TC</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-gray-100 min-h-screen">
     <div class="max-w-md mx-auto bg-white min-h-screen shadow-lg flex flex-col">
+        
         <div class="p-6 bg-blue-600 text-white rounded-b-3xl shadow-lg flex justify-between items-start">
             <div>
                 <h2 id="userName" class="text-xl font-bold">Memuat...</h2>
                 <p id="branchName" class="text-sm opacity-80 italic">Mendeteksi cabang...</p>
             </div>
-            <button onclick="logout()" class="text-xs bg-red-500 px-3 py-1 rounded-lg font-bold">Logout</button>
+            <button onclick="logout()" class="text-xs bg-red-500 hover:bg-red-600 px-3 py-1 rounded-lg font-bold transition-colors">
+                Logout
+            </button>
         </div>
 
         <div class="p-4 flex-1">
             <div class="relative rounded-3xl overflow-hidden bg-black aspect-[3/4] shadow-2xl border-4 border-white">
                 <video id="video" autoplay playsinline class="w-full h-full object-cover"></video>
                 <canvas id="canvas" class="hidden"></canvas>
+                
                 <div class="absolute bottom-4 left-4 bg-black/40 backdrop-blur-md text-white p-3 text-[10px] rounded-xl border border-white/20">
                     <p id="current-time">WIB: --:--</p>
                     <p id="coordsWatermark">GPS: Tracking...</p>
@@ -28,7 +32,7 @@
             </div>
 
             <div class="mt-6 space-y-4">
-                <select id="attendanceType" class="w-full p-4 rounded-2xl border-2 border-gray-100 font-bold text-gray-700 focus:border-blue-500 outline-none">
+                <select id="attendanceType" class="w-full p-4 rounded-2xl border-2 border-gray-100 font-bold text-gray-700 focus:border-blue-500 outline-none transition-all">
                     <option value="Masuk">Masuk Kerja</option>
                     <option value="Pulang">Pulang Kerja</option>
                 </select>
@@ -38,8 +42,8 @@
                 </p>
 
                 <button id="btnAbsen" disabled onclick="takePhoto()"
-                    class="w-full py-4 bg-gray-400 text-white rounded-2xl font-bold shadow-lg transition-all active:scale-95">
-                    Ambil Foto & Kirim
+                    class="w-full py-4 bg-gray-400 text-white rounded-2xl font-bold shadow-lg transition-all active:scale-95 flex justify-center items-center gap-2">
+                    <span id="btnText">Ambil Foto & Kirim</span>
                 </button>
             </div>
         </div>
@@ -52,38 +56,63 @@
 
         let stream;
         let userCoords = null;
+        let currentProfile = null;
 
-        // Inisialisasi Kamera & Data User
         async function init() {
             try {
-                // Kamera
-                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                // 1. Akses Kamera
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "user", width: { ideal: 720 }, height: { ideal: 1280 } } 
+                });
                 document.getElementById('video').srcObject = stream;
 
-                // Cek Login & Nama
+                // 2. Cek Sesi User
                 const { data: { user } } = await supabaseClient.auth.getUser();
-                if (!user) window.location.href = 'login.html';
+                if (!user) {
+                    window.location.href = 'login.html';
+                    return;
+                }
 
-                const { data: profile } = await supabaseClient.from('profiles').select('full_name').eq('id', user.id).single();
-                document.getElementById('userName').innerText = profile ? profile.full_name : "User";
+                // 3. Ambil Detail Profil & Cabang
+                const { data: profile } = await supabaseClient
+                    .from('profiles')
+                    .select('full_name, branch_id, branches(name)')
+                    .eq('id', user.id)
+                    .single();
 
-                // Tracking GPS
-                navigator.geolocation.watchPosition(pos => {
-                    userCoords = pos.coords;
-                    document.getElementById('coordsWatermark').innerText = `GPS: ${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`;
-                    document.getElementById('locationStatus').innerText = "Lokasi Siap (Siap Absen)";
-                    document.getElementById('locationStatus').className = "text-center text-sm font-semibold text-green-500";
-                    document.getElementById('btnAbsen').disabled = false;
-                    document.getElementById('btnAbsen').className = "w-full py-4 bg-blue-600 text-white rounded-2xl font-bold shadow-lg";
-                });
+                if (profile) {
+                    currentProfile = profile;
+                    document.getElementById('userName').innerText = profile.full_name;
+                    document.getElementById('branchName').innerText = profile.branches?.name || "Pusat";
+                }
 
-                // Update Jam
+                // 4. Tracking GPS
+                navigator.geolocation.watchPosition(
+                    (pos) => {
+                        userCoords = pos.coords;
+                        document.getElementById('coordsWatermark').innerText = `GPS: ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
+                        document.getElementById('locationStatus').innerText = "Lokasi Siap (Sesuai)";
+                        document.getElementById('locationStatus').className = "text-center text-sm font-semibold text-green-500";
+                        
+                        const btn = document.getElementById('btnAbsen');
+                        btn.disabled = false;
+                        btn.className = "w-full py-4 bg-blue-600 text-white rounded-2xl font-bold shadow-lg transition-all active:scale-95";
+                    },
+                    (err) => {
+                        document.getElementById('locationStatus').innerText = "GPS Error: " + err.message;
+                    },
+                    { enableHighAccuracy: true }
+                );
+
+                // 5. Jam Realtime
                 setInterval(() => {
-                    document.getElementById('current-time').innerText = "WIB: " + new Date().toLocaleTimeString('id-ID');
+                    const now = new Date();
+                    document.getElementById('current-time').innerText = "WIB: " + now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
                 }, 1000);
 
             } catch (err) {
-                alert("Izin kamera/lokasi ditolak!");
+                console.error(err);
+                alert("Mohon izinkan akses Kamera dan Lokasi untuk absen.");
             }
         }
 
@@ -96,46 +125,53 @@
             canvas.height = video.videoHeight;
             context.drawImage(video, 0, 0);
             
-            const photoBlob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.7));
+            const photoBlob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.8));
             uploadAttendance(photoBlob);
         }
 
         async function uploadAttendance(blob) {
             const btn = document.getElementById('btnAbsen');
-            btn.innerText = "Mengirim...";
+            const btnText = document.getElementById('btnText');
+            
+            btnText.innerText = "Mengirim...";
             btn.disabled = true;
 
             try {
                 const { data: { user } } = await supabaseClient.auth.getUser();
-                const fileName = `absensi_${user.id}_${Date.now()}.jpg`;
+                const fileName = `attendance/${user.id}/${Date.now()}.jpg`;
 
-                // 1. Upload Foto ke Storage
-                const { data: uploadData, error: uploadError } = await supabaseClient.storage
+                // A. Upload ke Storage
+                const { error: uploadError } = await supabaseClient.storage
                     .from('attendance-photos')
                     .upload(fileName, blob);
 
                 if (uploadError) throw uploadError;
 
-                const photoUrl = `${SUPABASE_URL}/storage/v1/object/public/attendance-photos/${fileName}`;
+                const { data: { publicUrl } } = supabaseClient.storage
+                    .from('attendance-photos')
+                    .getPublicUrl(fileName);
 
-                // 2. Simpan Data ke Tabel Attendance
-                const { error: dbError } = await supabaseClient.from('attendance').insert([{
-                    user_id: user.id,
-                    photo_url: photoUrl,
-                    notes: document.getElementById('attendanceType').value,
-                    latitude: userCoords.latitude,
-                    longitude: userCoords.longitude,
-                    distance_meters: 0 // Logika jarak bisa ditambahkan di sini
-                }]);
+                // B. Simpan ke Database (Perbaikan nama kolom: lat & long)
+                const { error: dbError } = await supabaseClient
+                    .from('attendance')
+                    .insert([{
+                        user_id: user.id,
+                        branch_id: currentProfile?.branch_id,
+                        photo_url: publicUrl,
+                        notes: document.getElementById('attendanceType').value,
+                        lat: userCoords.latitude,   // FIX: Pakai 'lat'
+                        long: userCoords.longitude, // FIX: Pakai 'long'
+                        distance_meters: 0
+                    }]);
 
                 if (dbError) throw dbError;
 
-                alert("Absensi Berhasil!");
+                alert("Berhasil! Absen Anda telah tercatat.");
                 location.reload();
 
             } catch (err) {
-                alert("Gagal: " + err.message);
-                btn.innerText = "Ambil Foto & Kirim";
+                alert("Gagal Kirim: " + err.message);
+                btnText.innerText = "Ambil Foto & Kirim";
                 btn.disabled = false;
             }
         }
@@ -145,6 +181,7 @@
             window.location.href = 'login.html';
         }
 
+        // Jalankan Inisialisasi
         init();
     </script>
 </body>
