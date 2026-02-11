@@ -7,93 +7,135 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-gray-50 h-screen flex items-center justify-center p-4">
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
 
-    <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-gray-100">
-        <div class="text-center mb-8">
-            <div class="w-16 h-16 bg-blue-600 rounded-2xl mx-auto flex items-center justify-center text-white font-bold text-2xl mb-4 shadow-lg">
+    <div class="bg-white p-8 rounded-3xl shadow-xl w-full max-w-sm text-center">
+        <div class="mb-6 flex justify-center">
+            <div class="bg-blue-600 text-white w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-bold shadow-lg">
                 TC
             </div>
-            <h2 class="text-2xl font-bold text-gray-800">Selamat Datang</h2>
-            <p class="text-gray-500 text-sm">Silakan masuk ke Portal Presensi Sukasari</p>
         </div>
 
-        <form id="loginForm" class="space-y-4">
-            <div>
-                <input type="email" id="email" placeholder="Email Kantor"
-                    class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                    required>
-            </div>
-            <div>
-                <input type="password" id="password" placeholder="Password"
-                    class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                    required>
-            </div>
-            <button type="submit" id="btnLogin"
-                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-blue-200 flex justify-center items-center gap-2">
-                <span>Masuk</span>
+        <h2 class="text-2xl font-bold text-gray-800 mb-2">Selamat Datang</h2>
+        <p class="text-gray-500 text-sm mb-8">Silakan masuk ke Portal Presensi Sukasari</p>
+
+        <form onsubmit="handleLogin(event)" class="space-y-4">
+            <input type="email" id="email" placeholder="Email Pegawai" required 
+                class="w-full p-4 rounded-xl bg-blue-50 border border-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 font-medium placeholder-gray-400">
+            
+            <input type="password" id="password" placeholder="Kata Sandi" required 
+                class="w-full p-4 rounded-xl bg-blue-50 border border-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 font-medium placeholder-gray-400">
+
+            <button type="submit" id="btnLogin" 
+                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg transition-transform active:scale-95">
+                Masuk
             </button>
         </form>
-        
-        <div id="errorMessage" class="hidden mt-4 p-3 bg-red-50 text-red-600 text-xs rounded-lg text-center font-medium">
-            </div>
+
+        <div id="errorMessage" class="hidden mt-4 p-3 bg-red-100 text-red-600 text-xs rounded-lg font-bold border border-red-200"></div>
+        <div id="debugInfo" class="hidden mt-2 text-[10px] text-gray-400 font-mono text-left break-all"></div>
     </div>
 
     <script>
-        // --- CONFIGURATION ---
-        const SUPABASE_URL = "https://ubcjzcczplfakodxgajg.supabase.co";
-        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InViY2p6Y2N6cGxmYWtvZHhnYWpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxODMwNDYsImV4cCI6MjA4NTc1OTA0Nn0.knzmrpJOqbZkduGIvZVK4zApoZiSXqCdhMVzcgkMaBE";
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-        const loginForm = document.getElementById('loginForm');
-        const btnLogin = document.getElementById('btnLogin');
-        const errorDiv = document.getElementById('errorMessage');
-
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            // Reset state
-            errorDiv.classList.add('hidden');
-            btnLogin.disabled = true;
-            btnLogin.innerText = "Mengecek...";
-
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-
-            try {
-                // 1. Auth Supabase
-                const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
-                    email: email,
-                    password: password,
-                });
-
-                if (authError) throw authError;
-
-                // 2. Ambil Role dari Profile
-                const { data: profile, error: profileError } = await supabaseClient
-                    .from('profiles')
-                    .select('role')
-                    .eq('id', authData.user.id)
-                    .single();
-
-                if (profileError) throw profileError;
-
-                // 3. Redirect Berdasarkan Role
-                if (profile.role === 'owner') {
-                    window.location.href = 'report.html';
-                } else if (profile.role === 'manager') {
-                    window.location.href = 'dashboard.html';
-                } else {
-                    window.location.href = 'index.html'; // Default untuk staff
-                }
-
-            } catch (err) {
-                errorDiv.innerText = "Gagal masuk: " + err.message;
-                errorDiv.classList.remove('hidden');
-                btnLogin.disabled = false;
-                btnLogin.innerText = "Masuk";
+        // --- KONFIGURASI SUPABASE (DIBERSIHKAN OTOMATIS) ---
+        // Perhatikan .trim() di akhir, ini kuncinya!
+        const SUPABASE_URL = "https://ubcjzcczplfakodxgajg.supabase.co".trim(); 
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InViY2p6Y2N6cGxmYWtvZHhnYWpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxODMwNDYsImV4cCI6MjA4NTc1OTA0Nn0.knzmrpJOqbZkduGIvZVK4zApoZiSXqCdhMVzcgkMaBE".trim();
+        
+        // Inisialisasi Client dengan opsi tambahan untuk kestabilan
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+            auth: {
+                persistSession: true,
+                autoRefreshToken: true,
             }
         });
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value.trim();
+            const btn = document.getElementById('btnLogin');
+            const errorDiv = document.getElementById('errorMessage');
+            const debugDiv = document.getElementById('debugInfo');
+
+            // Reset UI
+            btn.innerHTML = "Memproses...";
+            btn.disabled = true;
+            errorDiv.classList.add('hidden');
+            debugDiv.classList.add('hidden');
+
+            try {
+                // 1. Cek Koneksi Internet Browser
+                if (!navigator.onLine) {
+                    throw new Error("Tidak ada koneksi internet. Cek WiFi/Data Anda.");
+                }
+
+                // 2. Proses Login Supabase
+                const { data, error } = await supabaseClient.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+
+                if (error) throw error;
+
+                // 3. Login Sukses -> Cek Role untuk Redirect
+                // Kita ambil data user untuk memastikan sesi valid
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                
+                // Cek Profile untuk menentukan arah (Opsional, bisa langsung ke index)
+                const { data: profile } = await supabaseClient
+                    .from('profiles')
+                    .select('role')
+                    .eq('id', user.id)
+                    .single();
+
+                btn.innerHTML = "Sukses! Mengalihkan...";
+                btn.classList.replace('bg-blue-600', 'bg-green-500');
+
+                // Redirect logic
+                setTimeout(() => {
+                    if (profile && (profile.role === 'owner' || profile.role === 'manager')) {
+                        window.location.href = 'dashboard.html';
+                    } else {
+                        window.location.href = 'index.html';
+                    }
+                }, 1000);
+
+            } catch (err) {
+                console.error("Login Error:", err);
+                
+                // Menampilkan pesan error yang manusiawi
+                let msg = err.message;
+                if (msg.includes("Failed to fetch") || msg.includes("AbortError")) {
+                    msg = "Koneksi ke Server Gagal. Coba matikan VPN/AdBlock atau ganti jaringan.";
+                } else if (msg.includes("Invalid login")) {
+                    msg = "Email atau Kata Sandi salah.";
+                }
+
+                errorDiv.innerText = "Gagal: " + msg;
+                errorDiv.classList.remove('hidden');
+                
+                // Tampilkan debug info jika error aneh
+                if(err.message.includes("Abort") || err.message.includes("fetch")) {
+                   debugDiv.innerText = "Debug: " + err.name + " - " + err.message;
+                   debugDiv.classList.remove('hidden');
+                }
+
+                btn.innerHTML = "Masuk";
+                btn.disabled = false;
+            }
+        }
+
+        // Cek apakah user sudah login sebelumnya (Auto Login)
+        async function checkSession() {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session) {
+                // Opsional: Langsung redirect kalau sudah login
+                // window.location.href = 'index.html';
+            }
+        }
+        checkSession();
     </script>
 </body>
 </html>
