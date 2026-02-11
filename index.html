@@ -137,7 +137,12 @@
             btn.disabled = true;
 
             try {
-                const { data: { user } } = await supabaseClient.auth.getUser();
+                // Periksa koneksi internet sebelum fetch
+                if (!navigator.onLine) throw new Error("Koneksi internet terputus.");
+
+                const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+                if (userError || !user) throw new Error("Sesi berakhir, silakan login ulang.");
+
                 const fileName = `attendance/${user.id}/${Date.now()}.jpg`;
 
                 // A. Upload ke Storage
@@ -145,13 +150,14 @@
                     .from('attendance-photos')
                     .upload(fileName, blob);
 
-                if (uploadError) throw uploadError;
+                if (uploadError) throw new Error("Gagal upload foto: " + uploadError.message);
 
                 const { data: { publicUrl } } = supabaseClient.storage
                     .from('attendance-photos')
                     .getPublicUrl(fileName);
 
-                // B. Simpan ke Database (Perbaikan nama kolom: lat & long)
+                // B. Simpan ke Database (Perbaikan kolom: lat & long)
+                // Pastikan kolom di Supabase memang 'lat' dan 'long'
                 const { error: dbError } = await supabaseClient
                     .from('attendance')
                     .insert([{
@@ -159,18 +165,29 @@
                         branch_id: currentProfile?.branch_id,
                         photo_url: publicUrl,
                         notes: document.getElementById('attendanceType').value,
-                        lat: userCoords.latitude,   // FIX: Pakai 'lat'
-                        long: userCoords.longitude, // FIX: Pakai 'long'
+                        lat: userCoords.latitude,
+                        long: userCoords.longitude,
                         distance_meters: 0
                     }]);
 
-                if (dbError) throw dbError;
+                if (dbError) {
+                    // Cek jika error karena kolom tidak ditemukan
+                    if (dbError.message.includes("latitude")) {
+                         throw new Error("Error Database: Kolom 'latitude' tidak ditemukan. Pastikan kolom bernama 'lat'.");
+                    }
+                    throw dbError;
+                }
 
                 alert("Berhasil! Absen Anda telah tercatat.");
                 location.reload();
 
             } catch (err) {
-                alert("Gagal Kirim: " + err.message);
+                // Menangani AbortError atau Failed to Fetch secara lebih ramah
+                console.error("Detail Error:", err);
+                let msg = err.message;
+                if (msg.includes("fetch")) msg = "Gagal menghubungi server. Periksa sinyal internet Anda.";
+                
+                alert("Gagal: " + msg);
                 btnText.innerText = "Ambil Foto & Kirim";
                 btn.disabled = false;
             }
@@ -181,7 +198,6 @@
             window.location.href = 'login.html';
         }
 
-        // Jalankan Inisialisasi
         init();
     </script>
 </body>
