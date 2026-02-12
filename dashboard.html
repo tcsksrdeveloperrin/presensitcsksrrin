@@ -3,53 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manager Dashboard - TC Sukasari</title>
+    <title>Manager Dashboard - TC</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-gray-50 text-gray-800">
+<body class="bg-gray-100 text-gray-800">
 
-    <nav class="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
-        <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center text-white font-bold">M</div>
-            <div>
-                <h1 class="text-lg font-bold">Manager Dashboard</h1>
-                <p id="branchIdentity" class="text-[10px] text-gray-400 uppercase tracking-widest">Memuat Cabang...</p>
-            </div>
+    <nav class="bg-white border-b px-6 py-4 flex justify-between items-center sticky top-0 z-50">
+        <div>
+            <h1 class="text-xl font-bold text-gray-800">Manager Dashboard</h1>
+            <p id="branchNameDisplay" class="text-xs text-gray-500">Memuat Cabang...</p>
         </div>
-        <button onclick="logout()" class="text-gray-400 hover:text-red-500 transition text-2xl">
-            <i class="ri-logout-circle-r-line"></i>
-        </button>
+        <button onclick="logout()" class="text-red-500 font-bold text-sm">Logout</button>
     </nav>
 
-    <main class="p-4 max-w-7xl mx-auto">
-        <div class="bg-white p-6 rounded-2xl shadow-sm border mb-6">
-            <h2 id="managerWelcome" class="text-xl font-bold text-gray-800">Halo, Manager</h2>
-            <p class="text-sm text-gray-500">Pantau kehadiran tim di cabang Anda hari ini.</p>
+    <main class="p-6 max-w-6xl mx-auto">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-500">
+                <p class="text-gray-400 text-xs font-bold uppercase">Total Hadir Hari Ini</p>
+                <h2 id="statTotal" class="text-3xl font-bold text-gray-800">0</h2>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-green-500">
+                <p class="text-gray-400 text-xs font-bold uppercase">Tepat Waktu</p>
+                <h2 id="statOnTime" class="text-3xl font-bold text-green-600">0</h2>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-red-500">
+                <p class="text-gray-400 text-xs font-bold uppercase">Terlambat (Late)</p>
+                <h2 id="statLate" class="text-3xl font-bold text-red-600">0</h2>
+                <p class="text-[10px] text-gray-400">*Berdasarkan jam masuk > 08:00</p>
+            </div>
         </div>
 
-        <div class="bg-white rounded-2xl shadow-sm border overflow-hidden">
-            <div class="p-4 border-b flex justify-between items-center bg-gray-50/50">
-                <h3 class="font-bold text-gray-700">Daftar Hadir Tim</h3>
-                <span id="recordCount" class="text-xs bg-orange-50 text-orange-600 px-3 py-1 rounded-full font-bold">0 Records</span>
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div class="p-4 border-b">
+                <h3 class="font-bold">Aktivitas Hari Ini</h3>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-sm">
-                    <thead class="bg-gray-50 text-gray-400 font-bold uppercase text-[10px]">
+                    <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-6 py-4">Nama Pegawai</th>
-                            <th class="px-6 py-4">Waktu WIB</th>
-                            <th class="px-6 py-4">Status</th>
-                            <th class="px-6 py-4">Jarak</th>
-                            <th class="px-6 py-4 text-right">Aksi</th>
+                            <th class="px-6 py-3">Nama</th>
+                            <th class="px-6 py-3">Jam Masuk</th>
+                            <th class="px-6 py-3">Status Waktu</th>
+                            <th class="px-6 py-3">Foto</th>
                         </tr>
                     </thead>
-                    <tbody id="managerTableData" class="divide-y divide-gray-100">
-                        <tr>
-                            <td colspan="5" class="p-10 text-center text-gray-400 animate-pulse">Memuat data absensi...</td>
-                        </tr>
-                    </tbody>
+                    <tbody id="managerTableBody" class="divide-y">
+                        </tbody>
                 </table>
             </div>
         </div>
@@ -60,77 +60,80 @@
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InViY2p6Y2N6cGxmYWtvZHhnYWpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxODMwNDYsImV4cCI6MjA4NTc1OTA0Nn0.knzmrpJOqbZkduGIvZVK4zApoZiSXqCdhMVzcgkMaBE";
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        async function loadManagerData() {
-            const container = document.getElementById('managerTableData');
+        async function init() {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (!user) return window.location.href = 'login.html';
+
+            // Ambil Branch Manager
+            const { data: profile } = await supabaseClient
+                .from('profiles')
+                .select('branch_id, branches(name)')
+                .eq('id', user.id)
+                .single();
+
+            document.getElementById('branchNameDisplay').innerText = `Cabang: ${profile.branches?.name}`;
+
+            // Ambil Data Absen Hari Ini (Filter tanggal)
+            const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
             
-            try {
-                const { data: { user } } = await supabaseClient.auth.getUser();
-                if (!user) {
-                    window.location.href = 'login.html';
-                    return;
+            const { data: attendance } = await supabaseClient
+                .from('attendance')
+                .select('created_at, photo_url, profiles(full_name)')
+                .eq('branch_id', profile.branch_id)
+                .gte('created_at', today + 'T00:00:00')
+                .lte('created_at', today + 'T23:59:59')
+                .order('created_at', { ascending: false });
+
+            calculateStats(attendance);
+            renderTable(attendance);
+        }
+
+        function calculateStats(data) {
+            let total = data.length;
+            let late = 0;
+            
+            // Logika Telat Sederhana (Contoh: Jam Masuk > 08:00 Pagi)
+            // Anda bisa mengubah logic ini sesuai jam shift
+            data.forEach(row => {
+                const hour = new Date(row.created_at).getHours();
+                const minute = new Date(row.created_at).getMinutes();
+                if (hour > 8 || (hour === 8 && minute > 15)) { // Telat jika lewat 08:15
+                    late++;
                 }
+            });
 
-                const { data: profile, error: profileError } = await supabaseClient
-                    .from('profiles')
-                    .select('*, branches(*)')
-                    .eq('id', user.id)
-                    .single();
-                
-                if (profileError || !profile) throw new Error("Gagal memuat profil.");
+            document.getElementById('statTotal').innerText = total;
+            document.getElementById('statLate').innerText = late;
+            document.getElementById('statOnTime').innerText = total - late;
+        }
 
-                document.getElementById('managerWelcome').innerText = `Halo, ${profile.full_name}`;
-                document.getElementById('branchIdentity').innerText = `Cabang: ${profile.branches?.name || 'Pusat'}`;
-                
-                // Menggunakan kolom check_in sesuai database Anda
-                const { data: attendance, error } = await supabaseClient
-                    .from('attendance')
-                    .select('*, profiles(full_name), branches(radius_meter)')
-                    .eq('branch_id', profile.branch_id)
-                    .order('check_in', { ascending: false });
-
-                if (error) throw error;
-
-                document.getElementById('recordCount').innerText = `${attendance.length} Records`;
-                container.innerHTML = '';
-                
-                if (attendance.length === 0) {
-                    container.innerHTML = '<tr><td colspan="5" class="p-10 text-center text-gray-400 font-medium italic">Belum ada data absen hari ini.</td></tr>';
-                    return;
-                }
-
-                attendance.forEach(item => {
-                    const time = item.check_in ? new Date(item.check_in) : new Date();
-                    const timeString = time.toLocaleString('id-ID', { hour:'2-digit', minute:'2-digit' });
-                    
-                    const radiusLimit = item.branches?.radius_meter || 50;
-                    const isViolation = item.distance_meters > radiusLimit;
-                    
-                    container.innerHTML += `
-                        <tr class="hover:bg-gray-50 transition">
-                            <td class="px-6 py-4 font-bold text-gray-800">${item.profiles?.full_name || 'User'}</td>
-                            <td class="px-6 py-4 text-gray-500 font-medium">${timeString} WIB</td>
-                            <td class="px-6 py-4">
-                                <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase ${item.notes?.includes('Masuk') ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}">
-                                    ${item.notes || '-'}
-                                </span>
-                            </td>
-                            <td class="px-6 py-4 font-mono ${isViolation ? 'text-red-500 font-bold' : 'text-blue-600'}">
-                                ${Math.round(item.distance_meters || 0)}m
-                                ${isViolation ? '<i class="ri-error-warning-fill ml-1" title="Luar Radius"></i>' : ''}
-                            </td>
-                            <td class="px-6 py-4 text-right">
-                                <button onclick="window.open('${item.photo_url}', '_blank')" 
-                                    class="bg-gray-100 hover:bg-blue-600 hover:text-white text-gray-600 px-4 py-2 rounded-xl font-bold text-xs transition-all active:scale-95">
-                                    Cek Foto
-                                </button>
-                            </td>
-                        </tr>
-                    `;
-                });
-            } catch (err) {
-                console.error("Manager Dashboard Error:", err);
-                container.innerHTML = `<tr><td colspan="5" class="p-10 text-center text-red-500 font-bold bg-red-50">Error: ${err.message}</td></tr>`;
+        function renderTable(data) {
+            const tbody = document.getElementById('managerTableBody');
+            tbody.innerHTML = '';
+            
+            if(data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="p-6 text-center text-gray-400">Belum ada absen hari ini.</td></tr>';
+                return;
             }
+
+            data.forEach(row => {
+                const dateObj = new Date(row.created_at);
+                const time = dateObj.toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'});
+                const hour = dateObj.getHours();
+                
+                // Badge Status
+                let statusBadge = '<span class="text-green-600 bg-green-100 px-2 py-1 rounded text-xs font-bold">Tepat Waktu</span>';
+                if (hour > 8) statusBadge = '<span class="text-red-600 bg-red-100 px-2 py-1 rounded text-xs font-bold">Telat</span>';
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td class="px-6 py-4 font-bold">${row.profiles?.full_name}</td>
+                        <td class="px-6 py-4">${time} WIB</td>
+                        <td class="px-6 py-4">${statusBadge}</td>
+                        <td class="px-6 py-4"><a href="${row.photo_url}" target="_blank" class="text-blue-500 text-xs font-bold">Lihat</a></td>
+                    </tr>
+                `;
+            });
         }
 
         async function logout() {
@@ -138,8 +141,7 @@
             window.location.href = 'login.html';
         }
 
-        // Jalankan pemuatan data
-        loadManagerData();
+        init();
     </script>
 </body>
 </html>
