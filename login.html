@@ -97,10 +97,14 @@
                 btn.classList.replace('bg-blue-600', 'bg-green-500');
 
                 setTimeout(() => {
-                    if (profile && (profile.role === 'owner' || profile.role === 'manager')) {
-                        window.location.href = 'dashboard.html';
+
+                    if (profile && profile.role === 'owner') {
+                        window.location.href = 'report.html'; // Owner ke halaman laporan global
+                        // 
+                    } else if (profile && profile.role === 'manager') {
+                        window.location.href = 'dashboard.html'; // Manager ke dashboard cabang
                     } else {
-                        window.location.href = 'index.html';
+                        window.location.href = 'index.html'; // Staff ke halaman absen
                     }
                 }, 500);
 
