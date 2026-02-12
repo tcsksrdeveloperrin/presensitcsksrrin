@@ -3,182 +3,153 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Laporan Utama - Owner TC</title>
+    <title>Owner Dashboard - TC System</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
-<body class="bg-gray-50 text-gray-800">
+<body class="bg-gray-50 text-gray-800 font-sans">
 
-    <nav class="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
-        <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold">TC</div>
-            <div>
-                <h1 class="text-lg font-bold">Owner Dashboard</h1>
-                <p class="text-[10px] text-gray-400 uppercase tracking-widest">Sukasari Central System</p>
-            </div>
+    <nav class="bg-indigo-900 text-white p-4 flex justify-between items-center sticky top-0 z-50">
+        <div>
+            <h1 class="font-bold text-xl">Owner Panel</h1>
+            <p class="text-xs text-indigo-300">Monitoring Seluruh Cabang</p>
         </div>
-        <button onclick="logout()" class="text-gray-400 hover:text-red-500 transition text-2xl">
-            <i class="ri-logout-circle-r-line"></i>
-        </button>
+        <button onclick="logout()" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded text-sm font-bold">Logout</button>
     </nav>
 
-    <main class="p-4 max-w-7xl mx-auto">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-blue-100">
-                <p class="text-[10px] font-black text-gray-400 uppercase tracking-wider">Total Presensi</p>
-                <h2 id="totalToday" class="text-3xl font-bold text-indigo-600">0</h2>
+    <main class="p-6 max-w-7xl mx-auto">
+        
+        <div class="bg-white p-6 rounded-xl shadow-sm border mb-6 flex flex-col md:flex-row gap-4 items-end justify-between">
+            <div class="w-full md:w-1/3">
+                <label class="block text-sm font-bold text-gray-700 mb-2">Pilih Cabang</label>
+                <select id="branchFilter" onchange="loadReport()" class="w-full p-3 border rounded-lg bg-gray-50">
+                    <option value="all">-- Semua Cabang --</option>
+                    </select>
             </div>
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-green-100">
-                <p class="text-[10px] font-black text-gray-400 uppercase tracking-wider">Lokasi Sesuai</p>
-                <h2 id="totalValid" class="text-3xl font-bold text-green-600">0</h2>
-            </div>
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-red-100">
-                <p class="text-[10px] font-black text-gray-400 uppercase tracking-wider">Diluar Radius</p>
-                <h2 id="totalInvalid" class="text-3xl font-bold text-red-600">0</h2>
+            
+            <div class="w-full md:w-auto">
+                <button onclick="exportToExcel()" class="w-full bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-bold flex items-center justify-center gap-2">
+                    <span>Download Laporan (.xlsx)</span>
+                </button>
             </div>
         </div>
 
-        <div class="bg-white p-4 rounded-2xl shadow-sm border mb-6 flex flex-wrap gap-4 items-end justify-between">
-            <div class="flex gap-4">
-                <div>
-                    <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Pilih Bulan</label>
-                    <input type="month" id="filterMonth" onchange="loadReportData()" 
-                        class="px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition">
-                </div>
-            </div>
-            <button onclick="exportToExcel()" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg shadow-green-100 transition active:scale-95">
-                <i class="ri-file-excel-2-fill text-lg"></i> Export Excel
-            </button>
-        </div>
-
-        <div class="bg-white rounded-2xl shadow-sm border overflow-hidden">
-            <div class="p-4 border-b flex justify-between items-center bg-gray-50/50">
-                <h3 class="font-bold text-gray-700">Data Log Presensi Global</h3>
-                <span id="recordCount" class="text-xs bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full font-bold">0 Records</span>
+        <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+            <div class="p-4 border-b bg-gray-50 flex justify-between">
+                <h3 class="font-bold text-gray-700">Data Presensi Masuk</h3>
+                <span id="dataCount" class="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded font-bold">0 Data</span>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-sm" id="reportTable">
-                    <thead class="bg-gray-50 text-gray-400 font-bold uppercase text-[10px]">
+                    <thead class="bg-gray-100 text-gray-500 uppercase text-xs">
                         <tr>
-                            <th class="px-6 py-4">Nama Pegawai</th>
-                            <th class="px-6 py-4">Cabang</th>
-                            <th class="px-6 py-4">Waktu</th>
-                            <th class="px-6 py-4">Status</th>
-                            <th class="px-6 py-4">Jarak</th>
-                            <th class="px-6 py-4 text-center">Aksi</th>
+                            <th class="px-6 py-3">Tanggal & Waktu</th>
+                            <th class="px-6 py-3">Nama Staff</th>
+                            <th class="px-6 py-3">Cabang</th>
+                            <th class="px-6 py-3">Role</th>
+                            <th class="px-6 py-3">Tipe</th>
+                            <th class="px-6 py-3">Foto</th>
                         </tr>
                     </thead>
-                    <tbody id="reportData" class="divide-y divide-gray-100">
-                        <tr><td colspan="6" class="p-20 text-center animate-pulse text-gray-400">Menarik data dari server...</td></tr>
-                    </tbody>
+                    <tbody id="tableBody" class="divide-y divide-gray-100">
+                        </tbody>
                 </table>
             </div>
         </div>
     </main>
-
-    <div id="photoModal" class="fixed inset-0 bg-black/90 hidden flex items-center justify-center p-4 z-[100] backdrop-blur-sm">
-        <div class="max-w-xl w-full bg-white rounded-3xl overflow-hidden shadow-2xl transition-all">
-            <div class="relative">
-                <img id="modalImg" src="" class="w-full h-96 object-cover">
-                <button onclick="closeModal()" class="absolute top-4 right-4 bg-black/50 text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-black transition">
-                    <i class="ri-close-line text-xl"></i>
-                </button>
-            </div>
-            <div class="p-6 bg-white flex justify-between items-center">
-                <div>
-                    <p id="modalCaption" class="text-sm font-black text-gray-800"></p>
-                    <p class="text-xs text-gray-400 uppercase tracking-widest mt-1">Bukti Presensi Pegawai</p>
-                </div>
-                <button onclick="closeModal()" class="bg-indigo-50 text-indigo-600 px-6 py-2 rounded-xl font-bold text-sm hover:bg-indigo-100 transition">Selesai</button>
-            </div>
-        </div>
-    </div>
 
     <script>
         const SUPABASE_URL = "https://ubcjzcczplfakodxgajg.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InViY2p6Y2N6cGxmYWtvZHhnYWpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxODMwNDYsImV4cCI6MjA4NTc1OTA0Nn0.knzmrpJOqbZkduGIvZVK4zApoZiSXqCdhMVzcgkMaBE";
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        document.getElementById('filterMonth').value = new Date().toISOString().slice(0, 7);
+        let allData = [];
 
-        async function loadReportData() {
-            const container = document.getElementById('reportData');
-            const selectedMonth = document.getElementById('filterMonth').value; 
-            
-            try {
-                const { data, error } = await supabaseClient
-                    .from('attendance')
-                    .select('*, profiles(full_name), branches(name, radius_meter)')
-                    .order('check_in', { ascending: false });
+        async function init() {
+            // 1. Load Filter Cabang
+            const { data: branches } = await supabaseClient.from('branches').select('*');
+            const select = document.getElementById('branchFilter');
+            branches.forEach(b => {
+                select.innerHTML += `<option value="${b.id}">${b.name}</option>`;
+            });
 
-                if (error) throw error;
+            // 2. Load Data Awal
+            loadReport();
+        }
 
-                const filteredData = data.filter(item => item.check_in.startsWith(selectedMonth));
+        async function loadReport() {
+            const branchId = document.getElementById('branchFilter').value;
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center">Memuat data...</td></tr>';
 
-                const validCount = filteredData.filter(d => d.distance_meters <= (d.branches?.radius_meter || 50)).length;
-                const invalidCount = filteredData.length - validCount;
+            let query = supabaseClient
+                .from('attendance')
+                .select('created_at, notes, photo_url, profiles(full_name, role), branches(name)')
+                .order('created_at', { ascending: false });
 
-                document.getElementById('totalToday').innerText = filteredData.length;
-                document.getElementById('totalValid').innerText = validCount;
-                document.getElementById('totalInvalid').innerText = invalidCount;
-                document.getElementById('recordCount').innerText = `${filteredData.length} Records`;
-
-                container.innerHTML = '';
-                if (filteredData.length === 0) {
-                    container.innerHTML = '<tr><td colspan="6" class="p-10 text-center text-gray-400 italic">Tidak ada data untuk bulan ini.</td></tr>';
-                    return;
-                }
-
-                filteredData.forEach(item => {
-                    const dateObj = new Date(item.check_in);
-                    const formattedDate = dateObj.toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
-                    const radiusLimit = item.branches?.radius_meter || 50;
-                    const isViolation = item.distance_meters > radiusLimit;
-                    const statusText = item.notes || 'Hadir';
-
-                    container.innerHTML += `
-                        <tr class="hover:bg-gray-50 transition border-b border-gray-100 last:border-0">
-                            <td class="px-6 py-4">
-                                <p class="font-bold text-gray-900">${item.profiles?.full_name || 'Tanpa Nama'}</p>
-                            </td>
-                            <td class="px-6 py-4">
-                                <span class="bg-blue-50 text-blue-700 px-2 py-1 rounded text-[10px] font-bold">${item.branches?.name || 'Cabang Luar'}</span>
-                            </td>
-                            <td class="px-6 py-4 text-gray-600 text-xs font-medium">${formattedDate}</td>
-                            <td class="px-6 py-4">
-                                <span class="px-2 py-0.5 rounded text-[9px] font-black uppercase ${statusText.includes('Masuk') ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}">${statusText}</span>
-                            </td>
-                            <td class="px-6 py-4 font-mono ${isViolation ? 'text-red-500 font-black' : 'text-gray-500'}">
-                                ${Math.round(item.distance_meters || 0)}m ${isViolation ? '⚠️' : ''}
-                            </td>
-                            <td class="px-6 py-4 text-center">
-                                <button onclick="openModal('${item.photo_url}', '${item.profiles?.full_name}')" class="text-indigo-600 hover:text-indigo-900 font-black text-xs uppercase tracking-tighter">Lihat Foto</button>
-                            </td>
-                        </tr>`;
-                });
-            } catch (err) {
-                container.innerHTML = `<tr><td colspan="6" class="p-10 text-center text-red-500 font-bold">Gagal: ${err.message}</td></tr>`;
+            if (branchId !== 'all') {
+                query = query.eq('branch_id', branchId);
             }
+
+            const { data, error } = await query;
+            
+            if (error) return alert("Error: " + error.message);
+            
+            allData = data; // Simpan untuk excel
+            renderTable(data);
         }
 
-        function openModal(url, name) {
-            if(!url) return alert("Foto tidak tersedia");
-            document.getElementById('modalImg').src = url;
-            document.getElementById('modalCaption').innerText = name;
-            document.getElementById('photoModal').classList.remove('hidden');
+        function renderTable(data) {
+            const tbody = document.getElementById('tableBody');
+            document.getElementById('dataCount').innerText = `${data.length} Data`;
+            tbody.innerHTML = '';
+
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-gray-400">Tidak ada data.</td></tr>';
+                return;
+            }
+
+            data.forEach(row => {
+                const date = new Date(row.created_at).toLocaleString('id-ID');
+                tbody.innerHTML += `
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 font-mono text-gray-600">${date}</td>
+                        <td class="px-6 py-4 font-bold">${row.profiles?.full_name || 'N/A'}</td>
+                        <td class="px-6 py-4">${row.branches?.name || 'N/A'}</td>
+                        <td class="px-6 py-4 text-xs uppercase font-semibold text-gray-500">${row.profiles?.role || '-'}</td>
+                        <td class="px-6 py-4">
+                            <span class="px-2 py-1 rounded text-xs font-bold ${row.notes === 'Masuk' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}">${row.notes}</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <a href="${row.photo_url}" target="_blank" class="text-blue-600 hover:underline text-xs">Lihat Foto</a>
+                        </td>
+                    </tr>
+                `;
+            });
         }
 
-        function closeModal() {
-            document.getElementById('photoModal').classList.add('hidden');
-        }
-
+        // --- REQ 1: EXPORT EXCEL ---
         function exportToExcel() {
-            const table = document.getElementById("reportTable");
-            const wb = XLSX.utils.table_to_book(table);
-            const selectedMonth = document.getElementById('filterMonth').value;
-            XLSX.writeFile(wb, `Laporan_Global_${selectedMonth}.xlsx`);
+            if (allData.length === 0) return alert("Tidak ada data untuk diekspor!");
+
+            // Format data agar rapi di Excel
+            const cleanData = allData.map(item => ({
+                Tanggal: new Date(item.created_at).toLocaleString('id-ID'),
+                Nama: item.profiles?.full_name,
+                Cabang: item.branches?.name,
+                Role: item.profiles?.role,
+                Tipe_Absen: item.notes,
+                Link_Foto: item.photo_url
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(cleanData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan Presensi");
+            
+            // Nama file dinamis
+            const branchName = document.getElementById('branchFilter').options[document.getElementById('branchFilter').selectedIndex].text;
+            XLSX.writeFile(workbook, `Laporan_Presensi_${branchName}_${new Date().toISOString().slice(0,10)}.xlsx`);
         }
 
         async function logout() {
@@ -186,7 +157,7 @@
             window.location.href = 'login.html';
         }
 
-        loadReportData();
+        init();
     </script>
 </body>
 </html>
