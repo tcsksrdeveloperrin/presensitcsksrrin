@@ -6,44 +6,121 @@
     <title>Presensi Mobile - TC</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <style>
+        /* Fix Kamera Zoom */
+        #video-container {
+            position: relative;
+            width: 100%;
+            padding-top: 133%; /* Aspect Ratio 4:3 */
+            background: #000;
+            border-radius: 1.5rem;
+            overflow: hidden;
+        }
+        #video, #capturedImage {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Mengisi area tapi tetap proporsional */
+            transform: scaleX(-1); /* Mirror effect */
+        }
+        #capturedImage {
+            transform: none; /* Jangan dimirror kalau hasil foto */
+            display: none;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #db2777;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
 </head>
-<body class="bg-gray-100 min-h-screen">
-    <div class="max-w-md mx-auto bg-white min-h-screen shadow-lg flex flex-col">
+<body class="bg-gray-100 min-h-screen font-sans">
+
+    <div class="bg-red-600 p-4 text-white flex items-center shadow-lg sticky top-0 z-50">
+        <button onclick="window.history.back()" class="mr-4"><i class="ri-arrow-left-line text-xl"></i></button>
+        <h1 class="text-lg font-bold flex-1">Rekam Kehadiran</h1>
+    </div>
+
+    <div class="max-w-md mx-auto bg-white min-h-screen pb-20 relative">
         
-        <div class="p-6 bg-blue-600 text-white rounded-b-3xl shadow-lg flex justify-between items-start">
-            <div>
-                <h2 id="userName" class="text-xl font-bold">Memuat...</h2>
-                <p id="branchName" class="text-sm opacity-80 italic">Mendeteksi cabang...</p>
-            </div>
-            <button onclick="logout()" class="text-xs bg-red-500 hover:bg-red-600 px-3 py-1 rounded-lg font-bold transition-colors">
-                Logout
-            </button>
-        </div>
-
-        <div class="p-4 flex-1">
-            <div class="relative rounded-3xl overflow-hidden bg-black aspect-[3/4] shadow-2xl border-4 border-white">
-                <video id="video" autoplay playsinline class="w-full h-full object-cover"></video>
+        <div class="p-4" id="cameraSection">
+            <div id="video-container" class="shadow-2xl border-4 border-white mb-4">
+                <video id="video" autoplay playsinline></video>
+                <img id="capturedImage" src="" alt="Hasil Foto">
                 <canvas id="canvas" class="hidden"></canvas>
-                
-                <div class="absolute bottom-4 left-4 bg-black/40 backdrop-blur-md text-white p-3 text-[10px] rounded-xl border border-white/20">
-                    <p id="current-time">WIB: --:--</p>
-                    <p id="coordsWatermark">GPS: Tracking...</p>
-                </div>
             </div>
 
-            <div class="mt-6 space-y-4">
-                <select id="attendanceType" class="w-full p-4 rounded-2xl border-2 border-gray-100 font-bold text-gray-700 focus:border-blue-500 outline-none transition-all">
+            <div class="text-center mb-6" id="instructionText">
+                <h2 class="font-bold text-gray-800">Ambil Foto Selfie</h2>
+                <p class="text-xs text-gray-500">Pastikan wajah terlihat jelas dan berada di area kantor.</p>
+            </div>
+
+            <div class="space-y-4" id="formSection">
+                <select id="attendanceType" class="w-full p-3 rounded-xl border border-gray-300 font-bold text-gray-700 bg-gray-50">
                     <option value="Masuk">Masuk Kerja</option>
                     <option value="Pulang">Pulang Kerja</option>
                 </select>
 
-                <p id="locationStatus" class="text-center text-sm font-semibold text-orange-500 animate-pulse">
-                    Mengecek GPS...
-                </p>
+                <div id="locationStatus" class="flex items-center justify-center gap-2 text-xs font-semibold text-orange-500 bg-orange-50 p-2 rounded-lg">
+                    <div class="loader"></div> Mencari Lokasi...
+                </div>
+            </div>
+        </div>
 
-                <button id="btnAbsen" disabled onclick="takePhoto()"
-                    class="w-full py-4 bg-gray-400 text-white rounded-2xl font-bold shadow-lg transition-all active:scale-95 flex justify-center items-center gap-2">
-                    <span id="btnText">Ambil Foto & Kirim</span>
+        <div id="previewSection" class="hidden px-4">
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 mb-4">
+                <h2 id="prevName" class="text-xl font-bold text-gray-900">Memuat Nama...</h2>
+                <p id="prevRole" class="text-sm text-gray-400 mb-4">Memuat Role...</p>
+
+                <div class="space-y-3 text-sm">
+                    <div class="flex justify-between border-b border-gray-100 pb-2">
+                        <span class="text-gray-400">Shift</span>
+                        <span class="font-medium text-gray-800" id="prevShift">Reguler (08:00 - 17:00)</span>
+                    </div>
+                    <div class="flex justify-between border-b border-gray-100 pb-2">
+                        <span class="text-gray-400">Area</span>
+                        <span class="font-medium text-gray-800" id="prevArea">-</span>
+                    </div>
+                    <div class="flex justify-between border-b border-gray-100 pb-2">
+                        <span class="text-gray-400">Tanggal</span>
+                        <span class="font-medium text-gray-800" id="prevDate">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-2">
+                <p class="text-sm font-bold text-gray-700 mb-2">Lokasi Absensi</p>
+                <div class="bg-blue-50 border border-blue-100 rounded-xl p-3 flex gap-3 items-start">
+                    <div class="bg-blue-200 text-blue-600 rounded-lg p-2">
+                        <i class="ri-map-pin-2-fill text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-gray-800 leading-tight mb-1" id="addressText">Mengambil alamat...</p>
+                        <p class="text-[10px] text-gray-500 font-mono" id="coordsText">Lat, Long</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 max-w-md mx-auto">
+            <button id="btnCapture" onclick="capturePhoto()" disabled 
+                class="w-full py-3 bg-gray-300 text-white rounded-xl font-bold text-lg shadow-lg transition-all">
+                Ambil Foto
+            </button>
+
+            <div id="actionButtons" class="hidden flex gap-3">
+                <button onclick="resetCamera()" class="flex-1 py-3 border-2 border-red-500 text-red-500 rounded-xl font-bold">
+                    Ulangi
+                </button>
+                <button id="btnSubmit" onclick="uploadAttendance()" class="flex-[2] py-3 bg-red-600 text-white rounded-xl font-bold shadow-lg hover:bg-red-700">
+                    Simpan Kehadiran
                 </button>
             </div>
         </div>
@@ -54,148 +131,192 @@
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InViY2p6Y2N6cGxmYWtvZHhnYWpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxODMwNDYsImV4cCI6MjA4NTc1OTA0Nn0.knzmrpJOqbZkduGIvZVK4zApoZiSXqCdhMVzcgkMaBE";
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let stream;
-        let userCoords = null;
-        let currentProfile = null;
+        let stream, userCoords, currentProfile;
+        let photoBlob = null;
 
         async function init() {
             try {
-                // 1. Akses Kamera
+                // 1. Setup Kamera
+                const videoEl = document.getElementById('video');
+                // Constraint kamera diperbaiki untuk menghindari zoom berlebih
                 stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: "user", width: { ideal: 720 }, height: { ideal: 1280 } } 
+                    video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } } 
                 });
-                document.getElementById('video').srcObject = stream;
+                videoEl.srcObject = stream;
 
-                // 2. Cek Sesi User
+                // 2. Cek User & Profile
                 const { data: { user } } = await supabaseClient.auth.getUser();
-                if (!user) {
-                    window.location.href = 'login.html';
-                    return;
-                }
+                if (!user) return window.location.href = 'login.html';
 
-                // 3. Ambil Detail Profil & Cabang
                 const { data: profile } = await supabaseClient
                     .from('profiles')
-                    .select('full_name, branch_id, branches(name)')
+                    .select('*, branches(name, radius_meter, lat, lng)')
                     .eq('id', user.id)
                     .single();
 
                 if (profile) {
                     currentProfile = profile;
-                    document.getElementById('userName').innerText = profile.full_name;
-                    document.getElementById('branchName').innerText = profile.branches?.name || "Pusat";
+                    document.getElementById('prevName').innerText = profile.full_name;
+                    document.getElementById('prevRole').innerText = profile.role || "Staff";
+                    document.getElementById('prevArea').innerText = profile.branches?.name || "Pusat";
+                    
+                    // Format Tanggal Realtime
+                    const now = new Date();
+                    const options = { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' };
+                    document.getElementById('prevDate').innerText = now.toLocaleDateString('id-ID', options);
                 }
 
-                // 4. Tracking GPS
+                // 3. Geolocation Watch
                 navigator.geolocation.watchPosition(
-                    (pos) => {
-                        userCoords = pos.coords;
-                        document.getElementById('coordsWatermark').innerText = `GPS: ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
-                        document.getElementById('locationStatus').innerText = "Lokasi Siap (Sesuai)";
-                        document.getElementById('locationStatus').className = "text-center text-sm font-semibold text-green-500";
-                        
-                        const btn = document.getElementById('btnAbsen');
-                        btn.disabled = false;
-                        btn.className = "w-full py-4 bg-blue-600 text-white rounded-2xl font-bold shadow-lg transition-all active:scale-95";
-                    },
-                    (err) => {
-                        document.getElementById('locationStatus').innerText = "GPS Error: " + err.message;
-                    },
-                    { enableHighAccuracy: true }
+                    successLocation, 
+                    errorLocation, 
+                    { enableHighAccuracy: true, maximumAge: 10000 }
                 );
 
-                // 5. Jam Realtime
-                setInterval(() => {
-                    const now = new Date();
-                    document.getElementById('current-time').innerText = "WIB: " + now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                }, 1000);
-
             } catch (err) {
-                console.error(err);
-                alert("Mohon izinkan akses Kamera dan Lokasi untuk absen.");
+                alert("Error Init: " + err.message);
             }
         }
 
-        async function takePhoto() {
-            const video = document.getElementById('video');
-            const canvas = document.getElementById('canvas');
-            const context = canvas.getContext('2d');
+        function successLocation(pos) {
+            userCoords = pos.coords;
+            const btn = document.getElementById('btnCapture');
+            const status = document.getElementById('locationStatus');
             
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            context.drawImage(video, 0, 0);
+            status.innerHTML = `<i class="ri-map-pin-check-fill text-green-600"></i> <span class="text-green-600">Lokasi Terdeteksi</span>`;
+            status.className = "flex items-center justify-center gap-2 text-xs font-bold text-green-600 bg-green-50 p-2 rounded-lg";
             
-            const photoBlob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.8));
-            uploadAttendance(photoBlob);
+            document.getElementById('coordsText').innerText = `Lat: ${pos.coords.latitude.toFixed(6)}, Long: ${pos.coords.longitude.toFixed(6)}`;
+            
+            // Aktifkan tombol
+            btn.disabled = false;
+            btn.classList.remove('bg-gray-300');
+            btn.classList.add('bg-red-600', 'hover:bg-red-700');
         }
 
-        async function uploadAttendance(blob) {
-            const btn = document.getElementById('btnAbsen');
-            const btnText = document.getElementById('btnText');
+        function errorLocation(err) {
+            document.getElementById('locationStatus').innerText = "Gagal GPS: " + err.message;
+        }
+
+        // --- LOGIKA CAPTURE & PREVIEW ---
+        async function capturePhoto() {
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            const imgPreview = document.getElementById('capturedImage');
             
-            btnText.innerText = "Mengirim...";
+            // 1. Freeze Video -> Image
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            
+            // Konversi ke Blob
+            photoBlob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.8));
+            
+            // Tampilkan Preview Image
+            imgPreview.src = URL.createObjectURL(photoBlob);
+            imgPreview.style.display = 'block';
+            video.style.display = 'none';
+
+            // 2. Ubah UI ke Mode Preview
+            document.getElementById('formSection').classList.add('hidden');
+            document.getElementById('instructionText').classList.add('hidden');
+            document.getElementById('previewSection').classList.remove('hidden');
+            document.getElementById('btnCapture').classList.add('hidden');
+            document.getElementById('actionButtons').classList.remove('hidden');
+
+            // 3. Ambil Alamat (Reverse Geocoding OpenStreetMap - Gratis)
+            fetchAddress(userCoords.latitude, userCoords.longitude);
+        }
+
+        function resetCamera() {
+            document.getElementById('capturedImage').style.display = 'none';
+            document.getElementById('video').style.display = 'block';
+            
+            document.getElementById('formSection').classList.remove('hidden');
+            document.getElementById('instructionText').classList.remove('hidden');
+            document.getElementById('previewSection').classList.add('hidden');
+            document.getElementById('btnCapture').classList.remove('hidden');
+            document.getElementById('actionButtons').classList.add('hidden');
+        }
+
+        async function fetchAddress(lat, lng) {
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+                const data = await res.json();
+                document.getElementById('addressText').innerText = data.display_name || "Alamat tidak ditemukan";
+            } catch (e) {
+                document.getElementById('addressText').innerText = "Gagal memuat alamat detail";
+            }
+        }
+
+        // --- LOGIKA UPLOAD (REQ 1: FILE NAMING) ---
+        async function uploadAttendance() {
+            const btn = document.getElementById('btnSubmit');
+            btn.innerText = "Menyimpan...";
             btn.disabled = true;
 
             try {
-                // Periksa koneksi internet sebelum fetch
-                if (!navigator.onLine) throw new Error("Koneksi internet terputus.");
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                
+                // Format Nama File: CABANG_NAMA_ROLE_TANGGAL_WAKTU.jpg
+                // Menghapus spasi agar url aman
+                const branch = (currentProfile.branches?.name || "Pusat").replace(/\s+/g, '_');
+                const name = currentProfile.full_name.replace(/\s+/g, '_');
+                const role = currentProfile.role || "Staff";
+                const date = new Date().toISOString().replace(/[:.]/g, '-');
+                
+                // Struktur Folder: uploads/NAMA_CABANG/
+                const fileName = `uploads/${branch}/${branch}_${name}_${role}_${date}.jpg`;
 
-                const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-                if (userError || !user) throw new Error("Sesi berakhir, silakan login ulang.");
-
-                const fileName = `attendance/${user.id}/${Date.now()}.jpg`;
-
-                // A. Upload ke Storage
-                const { error: uploadError } = await supabaseClient.storage
+                // 1. Upload Storage
+                const { error: upErr } = await supabaseClient.storage
                     .from('attendance-photos')
-                    .upload(fileName, blob);
+                    .upload(fileName, photoBlob);
 
-                if (uploadError) throw new Error("Gagal upload foto: " + uploadError.message);
+                if (upErr) throw new Error("Gagal Upload: " + upErr.message);
 
+                // Get Public URL
                 const { data: { publicUrl } } = supabaseClient.storage
                     .from('attendance-photos')
                     .getPublicUrl(fileName);
 
-                // B. Simpan ke Database (Perbaikan kolom: lat & long)
-                // Pastikan kolom di Supabase memang 'lat' dan 'long'
-                const { error: dbError } = await supabaseClient
-                    .from('attendance')
-                    .insert([{
-                        user_id: user.id,
-                        branch_id: currentProfile?.branch_id,
-                        photo_url: publicUrl,
-                        notes: document.getElementById('attendanceType').value,
-                        lat: userCoords.latitude,
-                        long: userCoords.longitude,
-                        distance_meters: 0
-                    }]);
+                // 2. Insert Database
+                // Hitung jarak (opsional, jika field ada)
+                const distance = calculateDistance(userCoords.latitude, userCoords.longitude, 
+                                                currentProfile.branches?.lat, currentProfile.branches?.lng);
 
-                if (dbError) {
-                    // Cek jika error karena kolom tidak ditemukan
-                    if (dbError.message.includes("latitude")) {
-                         throw new Error("Error Database: Kolom 'latitude' tidak ditemukan. Pastikan kolom bernama 'lat'.");
-                    }
-                    throw dbError;
-                }
+                const { error: dbErr } = await supabaseClient.from('attendance').insert([{
+                    user_id: user.id,
+                    branch_id: currentProfile.branch_id,
+                    photo_url: publicUrl,
+                    notes: document.getElementById('attendanceType').value,
+                    lat: userCoords.latitude,
+                    long: userCoords.longitude,
+                    distance_meters: distance,
+                    status: 'Hadir' // Bisa dikembangkan logic 'Telat' disini
+                }]);
 
-                alert("Berhasil! Absen Anda telah tercatat.");
-                location.reload();
+                if (dbErr) throw dbErr;
+
+                alert("Berhasil disimpan!");
+                window.location.href = "index.html"; // Reload
 
             } catch (err) {
-                // Menangani AbortError atau Failed to Fetch secara lebih ramah
-                console.error("Detail Error:", err);
-                let msg = err.message;
-                if (msg.includes("fetch")) msg = "Gagal menghubungi server. Periksa sinyal internet Anda.";
-                
-                alert("Gagal: " + msg);
-                btnText.innerText = "Ambil Foto & Kirim";
+                alert("Gagal: " + err.message);
+                btn.innerText = "Simpan Kehadiran";
                 btn.disabled = false;
             }
         }
 
-        async function logout() {
-            await supabaseClient.auth.signOut();
-            window.location.href = 'login.html';
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            if(!lat2 || !lon2) return 0;
+            const R = 6371e3;
+            const φ1 = lat1 * Math.PI/180;
+            const φ2 = lat2 * Math.PI/180;
+            const Δφ = (lat2-lat1) * Math.PI/180;
+            const Δλ = (lon2-lon1) * Math.PI/180;
+            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2);
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         }
 
         init();
