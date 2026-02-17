@@ -3,56 +3,55 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Owner Dashboard - TC System</title>
+    <title>Owner Dashboard - TC Sukasari</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans">
 
-    <nav class="bg-indigo-900 text-white p-4 flex justify-between items-center sticky top-0 z-50">
-        <div>
-            <h1 class="font-bold text-xl">Owner Panel</h1>
-            <p class="text-xs text-indigo-300">Monitoring Seluruh Cabang</p>
+    <nav class="bg-white border-b px-6 py-4 flex justify-between items-center sticky top-0 z-50 shadow-sm">
+        <div class="flex items-center gap-3">
+            <div class="bg-emerald-600 text-white p-2 rounded-lg font-bold">TC</div>
+            <div>
+                <h1 class="text-lg font-bold text-gray-800 leading-tight">Owner Dashboard</h1>
+                <div class="flex items-center gap-2">
+                    <span id="ownerWelcome" class="text-xs font-semibold text-emerald-600">Memuat...</span>
+                    <span class="text-gray-300">|</span>
+                    <span id="branchIdentity" class="text-[10px] uppercase tracking-widest text-gray-500 font-bold">Cabang...</span>
+                </div>
+            </div>
         </div>
-        <button onclick="logout()" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded text-sm font-bold">Logout</button>
+        <div class="flex gap-2">
+            <button onclick="downloadExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-md flex items-center gap-2">
+                Unduh Laporan (.xlsx)
+            </button>
+            <button onclick="logout()" class="bg-white hover:bg-gray-50 text-gray-600 px-4 py-2 rounded-xl font-bold text-sm transition-all border border-gray-200">
+                Logout
+            </button>
+        </div>
     </nav>
 
     <main class="p-6 max-w-7xl mx-auto">
-        
-        <div class="bg-white p-6 rounded-xl shadow-sm border mb-6 flex flex-col md:flex-row gap-4 items-end justify-between">
-            <div class="w-full md:w-1/3">
-                <label class="block text-sm font-bold text-gray-700 mb-2">Pilih Cabang</label>
-                <select id="branchFilter" onchange="loadReport()" class="w-full p-3 border rounded-lg bg-gray-50">
-                    <option value="all">-- Semua Cabang --</option>
-                    </select>
+        <div id="statsGrid" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             </div>
-            
-            <div class="w-full md:w-auto">
-                <button onclick="exportToExcel()" class="w-full bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-bold flex items-center justify-center gap-2">
-                    <span>Download Laporan (.xlsx)</span>
-                </button>
-            </div>
-        </div>
 
-        <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
-            <div class="p-4 border-b bg-gray-50 flex justify-between">
-                <h3 class="font-bold text-gray-700">Data Presensi Masuk</h3>
-                <span id="dataCount" class="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded font-bold">0 Data</span>
+        <div class="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
+            <div class="p-5 border-b border-gray-50 flex justify-between items-center">
+                <h3 class="font-bold text-gray-700">Rekap Presensi Seluruh Pegawai</h3>
+                <span id="recordCountBadge" class="text-[10px] font-bold bg-gray-100 px-2 py-1 rounded-full uppercase tracking-tighter text-gray-500">0 RECORDS</span>
             </div>
             <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm" id="reportTable">
-                    <thead class="bg-gray-100 text-gray-500 uppercase text-xs">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-gray-50 text-gray-500 uppercase text-[10px] font-bold tracking-widest">
                         <tr>
-                            <th class="px-6 py-3">Tanggal & Waktu</th>
-                            <th class="px-6 py-3">Nama Staff</th>
-                            <th class="px-6 py-3">Cabang</th>
-                            <th class="px-6 py-3">Role</th>
-                            <th class="px-6 py-3">Tipe</th>
-                            <th class="px-6 py-3">Foto</th>
+                            <th class="px-6 py-4">Nama Pegawai</th>
+                            <th class="px-6 py-4">Waktu</th>
+                            <th class="px-6 py-4">Status Kehadiran</th>
+                            <th class="px-6 py-4">Lokasi (GPS)</th>
                         </tr>
                     </thead>
-                    <tbody id="tableBody" class="divide-y divide-gray-100">
+                    <tbody id="ownerTableData" class="divide-y divide-gray-50">
                         </tbody>
                 </table>
             </div>
@@ -63,93 +62,97 @@
         const SUPABASE_URL = "https://ubcjzcczplfakodxgajg.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InViY2p6Y2N6cGxmYWtvZHhnYWpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxODMwNDYsImV4cCI6MjA4NTc1OTA0Nn0.knzmrpJOqbZkduGIvZVK4zApoZiSXqCdhMVzcgkMaBE";
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        let currentAttendanceData = [];
 
-        let allData = [];
+        async function loadOwnerData() {
+            try {
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                if (!user) window.location.href = 'login.html';
 
-        async function init() {
-            // 1. Load Filter Cabang
-            const { data: branches } = await supabaseClient.from('branches').select('*');
-            const select = document.getElementById('branchFilter');
-            branches.forEach(b => {
-                select.innerHTML += `<option value="${b.id}">${b.name}</option>`;
+                const { data: profile } = await supabaseClient
+                    .from('profiles')
+                    .select('*, branches(*)')
+                    .eq('id', user.id)
+                    .single();
+                
+                if (profile.role !== 'owner') {
+                    alert("Akses hanya untuk Owner.");
+                    window.location.href = 'index.html';
+                    return;
+                }
+
+                document.getElementById('ownerWelcome').innerText = `Halo, ${profile.full_name}`;
+                document.getElementById('branchIdentity').innerText = profile.branches?.name || 'Owner';
+
+                // FILTER: Only show attendance from the owner's specific branch
+                const { data: attendance, error } = await supabaseClient
+                    .from('attendance')
+                    .select('*, profiles(full_name)')
+                    .eq('branch_id', profile.branch_id)
+                    .order('check_in', { ascending: false });
+
+                if (error) throw error;
+                currentAttendanceData = attendance;
+                renderOwnerDashboard(attendance);
+
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function renderOwnerDashboard(data) {
+            const container = document.getElementById('ownerTableData');
+            const statsGrid = document.getElementById('statsGrid');
+            
+            let onTime = 0;
+            data.forEach(item => {
+                const checkIn = new Date(item.check_in);
+                const isWeekend = (checkIn.getDay() === 0 || checkIn.getDay() === 6);
+                if (checkIn.getHours() < (isWeekend ? 12 : 13)) onTime++;
             });
 
-            // 2. Load Data Awal
-            loadReport();
+            // KPI Visuals
+            statsGrid.innerHTML = `
+                <div class="bg-indigo-600 p-6 rounded-2xl text-white shadow-lg">
+                    <p class="text-indigo-100 text-[10px] font-bold uppercase tracking-widest">Disiplin Cabang</p>
+                    <h2 class="text-4xl font-black mt-2">${data.length > 0 ? Math.round((onTime/data.length)*100) : 0}%</h2>
+                    <p class="text-xs mt-2 text-indigo-100 font-medium">Pegawai masuk tepat waktu</p>
+                </div>
+                <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                    <p class="text-gray-400 text-[10px] font-bold uppercase tracking-widest">Total Kehadiran</p>
+                    <h2 class="text-4xl font-black mt-2 text-gray-800">${data.length}</h2>
+                    <p class="text-xs mt-2 text-gray-500 font-medium font-mono text-emerald-600">Terverifikasi Sistem</p>
+                </div>
+                <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                    <p class="text-gray-400 text-[10px] font-bold uppercase tracking-widest">Status Hari Ini</p>
+                    <h2 class="text-4xl font-black mt-2 text-emerald-500">AKTIF</h2>
+                    <p class="text-xs mt-2 text-gray-500 font-medium">Monitoring Real-time</p>
+                </div>
+            `;
+
+            document.getElementById('recordCountBadge').innerText = `${data.length} RECORDS`;
+            container.innerHTML = data.map(item => `
+                <tr class="hover:bg-emerald-50/30 transition">
+                    <td class="px-6 py-4 font-bold text-gray-800">${item.profiles?.full_name}</td>
+                    <td class="px-6 py-4 text-xs text-gray-600">
+                        ${new Date(item.check_in).toLocaleString('id-ID', {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'})}
+                    </td>
+                    <td class="px-6 py-4 uppercase text-[10px] font-black tracking-widest text-emerald-600">${item.notes || 'MASUK'}</td>
+                    <td class="px-6 py-4 font-mono text-xs text-gray-500">${Math.round(item.distance_meters)}m ke Cabang</td>
+                </tr>
+            `).join('');
         }
 
-        async function loadReport() {
-            const branchId = document.getElementById('branchFilter').value;
-            const tbody = document.getElementById('tableBody');
-            tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center">Memuat data...</td></tr>';
-
-            let query = supabaseClient
-                .from('attendance')
-                .select('created_at, notes, photo_url, profiles(full_name, role), branches(name)')
-                .order('created_at', { ascending: false });
-
-            if (branchId !== 'all') {
-                query = query.eq('branch_id', branchId);
-            }
-
-            const { data, error } = await query;
-            
-            if (error) return alert("Error: " + error.message);
-            
-            allData = data; // Simpan untuk excel
-            renderTable(data);
-        }
-
-        function renderTable(data) {
-            const tbody = document.getElementById('tableBody');
-            document.getElementById('dataCount').innerText = `${data.length} Data`;
-            tbody.innerHTML = '';
-
-            if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-gray-400">Tidak ada data.</td></tr>';
-                return;
-            }
-
-            data.forEach(row => {
-                const date = new Date(row.created_at).toLocaleString('id-ID');
-                tbody.innerHTML += `
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-6 py-4 font-mono text-gray-600">${date}</td>
-                        <td class="px-6 py-4 font-bold">${row.profiles?.full_name || 'N/A'}</td>
-                        <td class="px-6 py-4">${row.branches?.name || 'N/A'}</td>
-                        <td class="px-6 py-4 text-xs uppercase font-semibold text-gray-500">${row.profiles?.role || '-'}</td>
-                        <td class="px-6 py-4">
-                            <span class="px-2 py-1 rounded text-xs font-bold ${row.notes === 'Masuk' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}">${row.notes}</span>
-                        </td>
-                        <td class="px-6 py-4">
-                            <a href="${row.photo_url}" target="_blank" class="text-blue-600 hover:underline text-xs">Lihat Foto</a>
-                        </td>
-                    </tr>
-                `;
-            });
-        }
-
-        // --- REQ 1: EXPORT EXCEL ---
-        function exportToExcel() {
-            if (allData.length === 0) return alert("Tidak ada data untuk diekspor!");
-
-            // Format data agar rapi di Excel
-            const cleanData = allData.map(item => ({
-                Tanggal: new Date(item.created_at).toLocaleString('id-ID'),
-                Nama: item.profiles?.full_name,
-                Cabang: item.branches?.name,
-                Role: item.profiles?.role,
-                Tipe_Absen: item.notes,
-                Link_Foto: item.photo_url
-            }));
-
-            const worksheet = XLSX.utils.json_to_sheet(cleanData);
+        function downloadExcel() {
+            const worksheet = XLSX.utils.json_to_sheet(currentAttendanceData.map(a => ({
+                Nama: a.profiles?.full_name,
+                Waktu: a.check_in,
+                Jarak_Meter: a.distance_meters,
+                Status: a.notes
+            })));
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan Presensi");
-            
-            // Nama file dinamis
-            const branchName = document.getElementById('branchFilter').options[document.getElementById('branchFilter').selectedIndex].text;
-            XLSX.writeFile(workbook, `Laporan_Presensi_${branchName}_${new Date().toISOString().slice(0,10)}.xlsx`);
+            XLSX.writeFile(workbook, "Laporan_Presensi_TC.xlsx");
         }
 
         async function logout() {
@@ -157,7 +160,7 @@
             window.location.href = 'login.html';
         }
 
-        init();
+        loadOwnerData();
     </script>
 </body>
 </html>
