@@ -7,49 +7,79 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-gray-100 text-gray-800">
+<body class="bg-gray-100 text-gray-800 font-sans">
 
-    <nav class="bg-white border-b px-6 py-4 flex justify-between items-center sticky top-0 z-50">
+    <nav class="bg-white border-b px-6 py-4 flex justify-between items-center sticky top-0 z-50 shadow-sm">
         <div>
             <h1 class="text-xl font-bold text-gray-800">Manager Dashboard</h1>
-            <p id="branchNameDisplay" class="text-xs text-gray-500">Memuat Cabang...</p>
+            <div class="flex flex-col">
+                <span id="managerWelcome" class="text-sm font-semibold text-blue-600">Memuat User...</span>
+                <span id="branchIdentity" class="text-xs text-gray-500">Memuat Cabang...</span>
+            </div>
         </div>
-        <button onclick="logout()" class="text-red-500 font-bold text-sm">Logout</button>
+        <button onclick="logout()" class="bg-red-50 hover:bg-red-100 text-red-600 px-4 py-2 rounded-lg font-bold text-sm transition-colors">
+            Logout
+        </button>
     </nav>
 
-    <main class="p-6 max-w-6xl mx-auto">
+    <main class="p-6 max-w-7xl mx-auto">
+        
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-500">
-                <p class="text-gray-400 text-xs font-bold uppercase">Total Hadir Hari Ini</p>
-                <h2 id="statTotal" class="text-3xl font-bold text-gray-800">0</h2>
+            <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-indigo-500 flex justify-between items-center">
+                <div>
+                    <p class="text-gray-400 text-xs font-bold uppercase tracking-wider">Total Data Cabang Ini</p>
+                    <h2 id="recordCount" class="text-3xl font-bold text-gray-800 mt-1">0</h2>
+                </div>
+                <div class="p-3 bg-indigo-50 rounded-full">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                </div>
             </div>
-            <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-green-500">
-                <p class="text-gray-400 text-xs font-bold uppercase">Tepat Waktu</p>
-                <h2 id="statOnTime" class="text-3xl font-bold text-green-600">0</h2>
-            </div>
-            <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-red-500">
-                <p class="text-gray-400 text-xs font-bold uppercase">Terlambat (Late)</p>
-                <h2 id="statLate" class="text-3xl font-bold text-red-600">0</h2>
-                <p class="text-[10px] text-gray-400">*Berdasarkan jam masuk > 08:00</p>
+            <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-emerald-500 col-span-2">
+                <p class="text-gray-400 text-xs font-bold uppercase tracking-wider mb-2">Aturan Jam Kerja</p>
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                        <span class="block font-bold text-gray-700">Senin - Jumat</span>
+                        <span class="text-emerald-600 font-mono">Masuk: 13:00 WIB</span>
+                    </div>
+                    <div>
+                        <span class="block font-bold text-gray-700">Sabtu - Minggu</span>
+                        <span class="text-emerald-600 font-mono">Masuk: 12:00 WIB</span>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-            <div class="p-4 border-b">
-                <h3 class="font-bold">Aktivitas Hari Ini</h3>
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+            <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
+                <h3 class="font-bold text-gray-700">Log Aktivitas Presensi</h3>
+                <span class="text-xs text-gray-400 bg-white px-2 py-1 rounded border">Realtime Data</span>
             </div>
             <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
-                    <thead class="bg-gray-50">
+                <table class="w-full text-left text-sm whitespace-nowrap">
+                    <thead class="bg-gray-100 text-gray-600 uppercase text-xs tracking-wider">
                         <tr>
-                            <th class="px-6 py-3">Nama</th>
-                            <th class="px-6 py-3">Jam Masuk</th>
-                            <th class="px-6 py-3">Status Waktu</th>
-                            <th class="px-6 py-3">Foto</th>
+                            <th class="px-6 py-3">Nama Pegawai</th>
+                            <th class="px-6 py-3">Waktu & Jadwal</th>
+                            <th class="px-6 py-3">Status & Estimasi</th>
+                            <th class="px-6 py-3">Jarak (GPS)</th>
+                            <th class="px-6 py-3 text-right">Bukti</th>
                         </tr>
                     </thead>
-                    <tbody id="managerTableBody" class="divide-y">
-                        </tbody>
+                    <tbody id="managerTableData" class="divide-y divide-gray-100">
+                        <tr>
+                            <td colspan="5" class="px-6 py-10 text-center text-gray-400">
+                                <div class="flex flex-col items-center justify-center">
+                                    <svg class="animate-spin h-5 w-5 text-gray-400 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Memuat data...
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
                 </table>
             </div>
         </div>
@@ -59,89 +89,121 @@
         const SUPABASE_URL = "https://ubcjzcczplfakodxgajg.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InViY2p6Y2N6cGxmYWtvZHhnYWpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxODMwNDYsImV4cCI6MjA4NTc1OTA0Nn0.knzmrpJOqbZkduGIvZVK4zApoZiSXqCdhMVzcgkMaBE";
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-        async function init() {
-            const { data: { user } } = await supabaseClient.auth.getUser();
-            if (!user) return window.location.href = 'login.html';
-
-            // Ambil Branch Manager
-            const { data: profile } = await supabaseClient
-                .from('profiles')
-                .select('branch_id, branches(name)')
-                .eq('id', user.id)
-                .single();
-
-            document.getElementById('branchNameDisplay').innerText = `Cabang: ${profile.branches?.name}`;
-
-            // Ambil Data Absen Hari Ini (Filter tanggal)
-            const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    
+        async function loadManagerData() {
+            const container = document.getElementById('managerTableData');
             
-            const { data: attendance } = await supabaseClient
-                .from('attendance')
-                .select('created_at, photo_url, profiles(full_name)')
-                .eq('branch_id', profile.branch_id)
-                .gte('created_at', today + 'T00:00:00')
-                .lte('created_at', today + 'T23:59:59')
-                .order('created_at', { ascending: false });
-
-            calculateStats(attendance);
-            renderTable(attendance);
-        }
-
-        function calculateStats(data) {
-            let total = data.length;
-            let late = 0;
-            
-            // Logika Telat Sederhana (Contoh: Jam Masuk > 08:00 Pagi)
-            // Anda bisa mengubah logic ini sesuai jam shift
-            data.forEach(row => {
-                const hour = new Date(row.created_at).getHours();
-                const minute = new Date(row.created_at).getMinutes();
-                if (hour > 8 || (hour === 8 && minute > 15)) { // Telat jika lewat 08:15
-                    late++;
-                }
-            });
-
-            document.getElementById('statTotal').innerText = total;
-            document.getElementById('statLate').innerText = late;
-            document.getElementById('statOnTime').innerText = total - late;
-        }
-
-        function renderTable(data) {
-            const tbody = document.getElementById('managerTableBody');
-            tbody.innerHTML = '';
-            
-            if(data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" class="p-6 text-center text-gray-400">Belum ada absen hari ini.</td></tr>';
-                return;
-            }
-
-            data.forEach(row => {
-                const dateObj = new Date(row.created_at);
-                const time = dateObj.toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'});
-                const hour = dateObj.getHours();
+            try {
+                // 1. Cek Sesi Manager
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                if (!user) return window.location.href = 'login.html';
+    
+                // 2. Ambil Profil Manager untuk tahu Cabang mana
+                const { data: profile } = await supabaseClient
+                    .from('profiles')
+                    .select('*, branches(*)')
+                    .eq('id', user.id)
+                    .single();
                 
-                // Badge Status
-                let statusBadge = '<span class="text-green-600 bg-green-100 px-2 py-1 rounded text-xs font-bold">Tepat Waktu</span>';
-                if (hour > 8) statusBadge = '<span class="text-red-600 bg-red-100 px-2 py-1 rounded text-xs font-bold">Telat</span>';
-
-                tbody.innerHTML += `
-                    <tr>
-                        <td class="px-6 py-4 font-bold">${row.profiles?.full_name}</td>
-                        <td class="px-6 py-4">${time} WIB</td>
-                        <td class="px-6 py-4">${statusBadge}</td>
-                        <td class="px-6 py-4"><a href="${row.photo_url}" target="_blank" class="text-blue-500 text-xs font-bold">Lihat</a></td>
-                    </tr>
-                `;
-            });
+                if (!profile || profile.role !== 'manager') {
+                    alert("Akses ditolak. Anda bukan Manager.");
+                    return window.location.href = 'index.html';
+                }
+    
+                document.getElementById('managerWelcome').innerText = `Halo, ${profile.full_name}`;
+                document.getElementById('branchIdentity').innerText = `Cabang: ${profile.branches?.name || 'Umum'}`;
+                
+                // 3. Ambil Data Absensi (Hanya Cabang Ini)
+                const { data: attendance, error } = await supabaseClient
+                    .from('attendance')
+                    .select('*, profiles(full_name), branches(radius_meter)')
+                    .eq('branch_id', profile.branch_id) 
+                    .order('check_in', { ascending: false });
+    
+                if (error) throw error;
+    
+                document.getElementById('recordCount').innerText = `${attendance.length}`;
+                container.innerHTML = '';
+                
+                if (attendance.length === 0) {
+                    container.innerHTML = '<tr><td colspan="5" class="p-10 text-center text-gray-400">Belum ada data absen di cabang ini.</td></tr>';
+                    return;
+                }
+    
+                attendance.forEach(item => {
+                    // --- LOGIKA JAM KERJA & DURASI ---
+                    const checkInTime = new Date(item.check_in);
+                    const day = checkInTime.getDay(); // 0 = Minggu, 6 = Sabtu
+                    const isWeekend = (day === 0 || day === 6);
+                    
+                    // Tentukan Jam Masuk (13:00 vs 12:00)
+                    const startHour = isWeekend ? 12 : 13; 
+                    const startMinute = 0;
+    
+                    // Cek Keterlambatan
+                    const hour = checkInTime.getHours();
+                    const minute = checkInTime.getMinutes();
+                    let timeStatus = '<span class="text-green-600 font-bold text-[10px] bg-green-50 px-2 py-1 rounded">TEPAT WAKTU</span>';
+                    
+                    // Jika jam lebih besar, atau jam sama tapi menit lewat -> Terlambat
+                    if (hour > startHour || (hour === startHour && minute > 0)) {
+                        timeStatus = '<span class="text-red-500 font-bold text-[10px] bg-red-50 px-2 py-1 rounded">TERLAMBAT</span>';
+                    }
+    
+                    // Hitung Estimasi Pulang (Durasi 8 Jam)
+                    const goHomeTime = new Date(checkInTime.getTime() + (8 * 60 * 60 * 1000));
+                    const goHomeStr = goHomeTime.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' });
+    
+                    // Format Tampilan Lainnya
+                    const dateStr = checkInTime.toLocaleString('id-ID', { 
+                        weekday: 'short', day: 'numeric', month: 'short', hour:'2-digit', minute:'2-digit' 
+                    });
+                    const radiusLimit = item.branches?.radius_meter || 50;
+                    const isViolation = item.distance_meters > radiusLimit;
+                    const noteType = item.notes || 'Hadir';
+    
+                    // --- RENDER TABEL ---
+                    container.innerHTML += `
+                        <tr class="hover:bg-gray-50 transition border-b border-gray-100">
+                            <td class="px-6 py-4">
+                                <p class="font-bold text-gray-800">${item.profiles?.full_name || 'Tanpa Nama'}</p>
+                                <p class="text-[10px] text-gray-400 uppercase tracking-wide font-semibold">${isWeekend ? 'Shift: Weekend (12.00)' : 'Shift: Weekday (13.00)'}</p>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="text-xs font-medium text-gray-600 mb-1">${dateStr} WIB</div>
+                                ${noteType.includes('Masuk') ? timeStatus : ''}
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase ${noteType.includes('Masuk') ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}">
+                                    ${noteType}
+                                </span>
+                                 ${noteType.includes('Masuk') ? `<div class="text-[10px] text-gray-500 mt-1 font-mono">Pulang: <b>${goHomeStr}</b></div>` : ''}
+                            </td>
+                            <td class="px-6 py-4 font-mono ${isViolation ? 'text-red-500 font-bold' : 'text-green-600'}">
+                                ${Math.round(item.distance_meters || 0)}m
+                                ${isViolation ? '<span class="block text-[9px] text-red-400">Diluar Radius</span>' : ''}
+                            </td>
+                            <td class="px-6 py-4 text-right">
+                                <button onclick="window.open('${item.photo_url}', '_blank')" 
+                                    class="bg-white border border-gray-200 hover:bg-indigo-600 hover:text-white text-gray-600 px-3 py-2 rounded-lg font-bold text-xs transition-all shadow-sm">
+                                    Lihat Foto
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } catch (err) {
+                console.error("Dashboard Error:", err);
+                container.innerHTML = `<tr><td colspan="5" class="p-10 text-center text-red-500 font-bold bg-red-50">Error: ${err.message}</td></tr>`;
+            }
         }
-
+    
         async function logout() {
             await supabaseClient.auth.signOut();
             window.location.href = 'login.html';
         }
-
-        init();
+    
+        loadManagerData();
     </script>
 </body>
 </html>
