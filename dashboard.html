@@ -6,6 +6,7 @@
     <title>Manager Dashboard - TC Sukasari</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans">
 
@@ -25,6 +26,26 @@
             Logout
         </button>
     </nav>
+
+    <div class="max-w-7xl mx-auto px-6 pt-6 flex flex-wrap gap-4 items-end justify-between">
+        <div class="flex gap-4 items-end">
+            <div>
+                <label class="text-[10px] font-bold text-gray-500 uppercase">Pilih Tanggal</label>
+                <input type="date" id="filterDate" onchange="loadManagerData()" class="block w-full mt-1 p-2 border border-gray-200 rounded-lg text-sm font-bold text-gray-700">
+            </div>
+            <div>
+                <label class="text-[10px] font-bold text-gray-500 uppercase">Rentang Laporan</label>
+                <select id="filterRange" onchange="loadManagerData()" class="block w-full mt-1 p-2 border border-gray-200 rounded-lg text-sm font-bold text-gray-700">
+                    <option value="harian">Harian</option>
+                    <option value="mingguan">Mingguan</option>
+                    <option value="bulanan">Bulanan</option>
+                </select>
+            </div>
+        </div>
+        <button onclick="exportManagerData()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-md">
+            Export Data (.xlsx)
+        </button>
+    </div>
 
     <main class="p-6 max-w-7xl mx-auto">
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
@@ -69,9 +90,9 @@
                 <table class="w-full text-left text-sm">
                     <thead class="bg-gray-50 text-gray-500 uppercase text-[10px] font-bold tracking-widest">
                         <tr>
-                            <th class="px-6 py-4">Pegawai</th>
+                            <th class="px-6 py-4">Pegawai & Info</th>
                             <th class="px-6 py-4">Waktu Check-In</th>
-                            <th class="px-6 py-4">Status Jadwal</th>
+                            <th class="px-6 py-4">Kategori Jam</th>
                             <th class="px-6 py-4">Jarak</th>
                             <th class="px-6 py-4 text-right">Aksi</th>
                         </tr>
@@ -87,6 +108,14 @@
         const SUPABASE_URL = "https://ubcjzcczplfakodxgajg.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InViY2p6Y2N6cGxmYWtvZHhnYWpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxODMwNDYsImV4cCI6MjA4NTc1OTA0Nn0.knzmrpJOqbZkduGIvZVK4zApoZiSXqCdhMVzcgkMaBE";
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        let globalAttendanceData = [];
+
+        // Set Default Date Input to Today
+        document.addEventListener("DOMContentLoaded", () => {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('filterDate').value = today;
+            loadManagerData();
+        });
 
         async function loadManagerData() {
             const container = document.getElementById('managerTableData');
@@ -108,15 +137,39 @@
                 document.getElementById('managerWelcome').innerText = `Halo, ${profile.full_name}`;
                 document.getElementById('branchIdentity').innerText = profile.branches?.name || 'Cabang';
 
-                // FIXED: Use check_in instead of created_at
+                // Logika Filter Kalender Real
+                const dateInput = document.getElementById('filterDate').value;
+                const rangeInput = document.getElementById('filterRange').value;
+                
+                let targetDate = dateInput ? new Date(dateInput) : new Date();
+                let startDate = new Date(targetDate);
+                let endDate = new Date(targetDate);
+                endDate.setHours(23, 59, 59, 999);
+
+                if (rangeInput === 'harian') {
+                    startDate.setHours(0, 0, 0, 0);
+                } else if (rangeInput === 'mingguan') {
+                    const day = startDate.getDay() || 7; 
+                    startDate.setDate(startDate.getDate() - day + 1);
+                    startDate.setHours(0,0,0,0);
+                    
+                    endDate = new Date(startDate);
+                    endDate.setDate(endDate.getDate() + 6);
+                    endDate.setHours(23,59,59,999);
+                } else if (rangeInput === 'bulanan') {
+                    startDate = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
+                    endDate = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0, 23, 59, 59, 999);
+                }
+
                 const { data: attendance, error } = await supabaseClient
                     .from('attendance')
                     .select('*, profiles(full_name), branches(radius_meter)')
-                    .eq('branch_id', profile.branch_id) 
+                    .eq('branch_id', profile.branch_id)
+                    .gte('check_in', startDate.toISOString())
+                    .lte('check_in', endDate.toISOString())
                     .order('check_in', { ascending: false });
 
                 if (error) throw error;
-
                 renderDashboard(attendance);
 
             } catch (err) {
@@ -125,6 +178,7 @@
         }
 
         function renderDashboard(data) {
+            globalAttendanceData = data; 
             const container = document.getElementById('managerTableData');
             let onTime = 0, late = 0, violations = 0;
 
@@ -133,14 +187,28 @@
 
             data.forEach(item => {
                 const checkInTime = new Date(item.check_in);
-                const day = checkInTime.getDay();
-                const isWeekend = (day === 0 || day === 6);
-                const startHour = isWeekend ? 12 : 13;
+                const isWeekend = (checkInTime.getDay() === 0 || checkInTime.getDay() === 6);
+                const isShift2 = item.notes && item.notes.includes('Shift 2');
                 
-                const hour = checkInTime.getHours();
-                const minute = checkInTime.getMinutes();
+                // Set Jam Kedatangan Berdasarkan Shift & Hari
+                let targetHour = 13; 
+                if (isShift2) {
+                    targetHour = 15;
+                } else {
+                    targetHour = isWeekend ? 12 : 13;
+                }
                 
-                let isLate = (hour > startHour || (hour === startHour && minute > 0));
+                const targetTime = new Date(checkInTime);
+                targetTime.setHours(targetHour, 0, 0, 0);
+                const diffMinutes = (checkInTime - targetTime) / (1000 * 60);
+                
+                // Kategorisasi Toleransi Keterlambatan
+                let kategori = { text: "SANGAT BAIK", bg: "bg-green-100 text-green-700" };
+                if (diffMinutes > 0 && diffMinutes <= 5) kategori = { text: "BAIK", bg: "bg-blue-100 text-blue-700" };
+                else if (diffMinutes > 5 && diffMinutes <= 15) kategori = { text: "CUKUP", bg: "bg-yellow-100 text-yellow-700" };
+                else if (diffMinutes > 15) kategori = { text: "KURANG", bg: "bg-red-100 text-red-700" };
+
+                let isLate = diffMinutes > 0;
                 if(isLate) late++; else onTime++;
 
                 const radiusLimit = item.branches?.radius_meter || 50;
@@ -151,22 +219,22 @@
                     <tr class="hover:bg-gray-50/50 transition">
                         <td class="px-6 py-4">
                             <p class="font-bold text-gray-800">${item.profiles?.full_name || 'User'}</p>
-                            <p class="text-[9px] text-gray-400 font-bold uppercase tracking-tighter">${isWeekend ? 'Shift Weekend' : 'Shift Weekday'}</p>
+                            <p class="text-[10px] text-gray-500 font-bold">${item.notes || '-'}</p>
                         </td>
                         <td class="px-6 py-4">
                             <p class="text-xs font-medium text-gray-600">${checkInTime.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})} WIB</p>
                             <p class="text-[10px] text-gray-400">${checkInTime.toLocaleDateString('id-ID', {day:'numeric', month:'short'})}</p>
                         </td>
                         <td class="px-6 py-4">
-                            ${isLate 
-                                ? '<span class="bg-rose-50 text-rose-600 text-[10px] font-black px-2 py-1 rounded">TERLAMBAT</span>' 
-                                : '<span class="bg-emerald-50 text-emerald-600 text-[10px] font-black px-2 py-1 rounded">TEPAT WAKTU</span>'}
+                            <span class="${kategori.bg} text-[10px] font-black px-2 py-1 rounded tracking-widest">${kategori.text}</span>
                         </td>
                         <td class="px-6 py-4">
                             <span class="font-mono text-xs ${isViolation ? 'text-rose-500 font-bold' : 'text-emerald-600'}">${Math.round(item.distance_meters)}m</span>
                         </td>
-                        <td class="px-6 py-4 text-right">
-                            <button onclick="window.open('${item.photo_url}', '_blank')" class="text-indigo-600 hover:text-indigo-800 font-bold text-xs bg-indigo-50 px-3 py-2 rounded-lg transition-all">Foto</button>
+                        <td class="px-6 py-4 text-right flex justify-end gap-2">
+                            <button onclick="window.open('${item.photo_url}', '_blank')" class="text-indigo-600 hover:text-indigo-800 font-bold text-[10px] bg-indigo-50 px-2 py-1 rounded transition-all">Foto</button>
+                            <button onclick="editRecord('${item.id}', '${item.notes}')" class="text-orange-600 hover:text-orange-800 font-bold text-[10px] bg-orange-50 px-2 py-1 rounded transition-all">Edit</button>
+                            <button onclick="deleteRecord('${item.id}')" class="text-red-600 hover:text-red-800 font-bold text-[10px] bg-red-50 px-2 py-1 rounded transition-all">Hapus</button>
                         </td>
                     </tr>
                 `;
@@ -178,12 +246,47 @@
             document.getElementById('onTimeRate').innerText = data.length > 0 ? Math.round((onTime/data.length)*100) + '%' : '0%';
         }
 
+        async function deleteRecord(id) {
+            if(confirm('Apakah Anda yakin ingin menghapus data presensi ini?')) {
+                const { error } = await supabaseClient.from('attendance').delete().eq('id', id);
+                if(error) alert('Gagal menghapus: ' + error.message);
+                else loadManagerData();
+            }
+        }
+
+        async function editRecord(id, currentNotes) {
+            const newNotes = prompt('Sunting Keterangan Login (Shift/Status):', currentNotes);
+            if(newNotes !== null && newNotes.trim() !== "") {
+                const { error } = await supabaseClient.from('attendance').update({ notes: newNotes }).eq('id', id);
+                if(error) alert('Gagal menyunting: ' + error.message);
+                else loadManagerData();
+            }
+        }
+
+        function exportManagerData() {
+            if(globalAttendanceData.length === 0) return alert('Tidak ada data untuk diekspor.');
+            
+            const worksheet = XLSX.utils.json_to_sheet(globalAttendanceData.map(a => {
+                const checkInTime = new Date(a.check_in);
+                return {
+                    "Nama Pegawai": a.profiles?.full_name,
+                    "Tanggal": checkInTime.toLocaleDateString('id-ID'),
+                    "Waktu": checkInTime.toLocaleTimeString('id-ID'),
+                    "Keterangan": a.notes,
+                    "Jarak (Meter)": Math.round(a.distance_meters),
+                    "Pelanggaran Radius": a.distance_meters > (a.branches?.radius_meter || 50) ? "Ya" : "Tidak"
+                };
+            }));
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan Presensi");
+            XLSX.writeFile(workbook, "Laporan_Manager_TC.xlsx");
+        }
+
         async function logout() {
             await supabaseClient.auth.signOut();
             window.location.href = 'login.html';
         }
 
-        loadManagerData();
     </script>
 </body>
 </html>
