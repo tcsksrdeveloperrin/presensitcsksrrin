@@ -6,7 +6,6 @@
     <title>Owner Dashboard - TC Sukasari</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans">
 
@@ -23,9 +22,6 @@
             </div>
         </div>
         <div class="flex gap-2">
-            <button onclick="downloadExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-md flex items-center gap-2">
-                Unduh Laporan (.xlsx)
-            </button>
             <button onclick="logout()" class="bg-white hover:bg-gray-50 text-gray-600 px-4 py-2 rounded-xl font-bold text-sm transition-all border border-gray-200">
                 Logout
             </button>
@@ -84,7 +80,6 @@
                 document.getElementById('ownerWelcome').innerText = `Halo, ${profile.full_name}`;
                 document.getElementById('branchIdentity').innerText = profile.branches?.name || 'Owner';
 
-                // FILTER: Only show attendance from the owner's specific branch
                 const { data: attendance, error } = await supabaseClient
                     .from('attendance')
                     .select('*, profiles(full_name)')
@@ -111,7 +106,6 @@
                 if (checkIn.getHours() < (isWeekend ? 12 : 13)) onTime++;
             });
 
-            // KPI Visuals
             statsGrid.innerHTML = `
                 <div class="bg-indigo-600 p-6 rounded-2xl text-white shadow-lg">
                     <p class="text-indigo-100 text-[10px] font-bold uppercase tracking-widest">Disiplin Cabang</p>
@@ -141,18 +135,6 @@
                     <td class="px-6 py-4 font-mono text-xs text-gray-500">${Math.round(item.distance_meters)}m ke Cabang</td>
                 </tr>
             `).join('');
-        }
-
-        function downloadExcel() {
-            const worksheet = XLSX.utils.json_to_sheet(currentAttendanceData.map(a => ({
-                Nama: a.profiles?.full_name,
-                Waktu: a.check_in,
-                Jarak_Meter: a.distance_meters,
-                Status: a.notes
-            })));
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan Presensi");
-            XLSX.writeFile(workbook, "Laporan_Presensi_TC.xlsx");
         }
 
         async function logout() {
