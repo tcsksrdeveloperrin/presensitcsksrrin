@@ -92,15 +92,16 @@
                     <thead class="bg-gray-50 text-gray-500 uppercase text-[10px] font-bold tracking-widest">
                         <tr>
                             <th class="px-6 py-4">Pegawai & Info</th>
-                            <th class="px-6 py-4">Waktu Check-In</th>
-                            <th class="px-6 py-4">Kategori Jam</th>
-                            <th class="px-6 py-4">Jarak</th>
+                            <th class="px-6 py-4">Jam Masuk</th>
+                            <th class="px-6 py-4">Jam Pulang</th>
+                            <th class="px-6 py-4">Status Masuk</th>
+                            <th class="px-6 py-4">Jarak (In)</th>
                             <th class="px-6 py-4">Lokasi Presensi</th>
                             <th class="px-6 py-4 text-right">Aksi</th>
                         </tr>
                     </thead>
                     <tbody id="managerTableData" class="divide-y divide-gray-50">
-                        </tbody>
+                    </tbody>
                 </table>
             </div>
         </div>
@@ -166,146 +167,152 @@
                     .eq('branch_id', profile.branch_id)
                     .gte('check_in', startDate.toISOString())
                     .lte('check_in', endDate.toISOString())
-                    .order('check_in', { ascending: false });
+                    .order('check_in', { ascending: true }); // Ubah ke ascending untuk mempermudah grouping
 
                 if (error) throw error;
                 renderDashboard(attendance);
 
             } catch (err) {
-                container.innerHTML = `<tr><td colspan="6" class="p-10 text-center text-red-500 font-bold">${err.message}</td></tr>`;
+                container.innerHTML = `<tr><td colspan="7" class="p-10 text-center text-red-500 font-bold">${err.message}</td></tr>`;
             }
         }
 
         function renderDashboard(data) {
             globalAttendanceData = data; 
             const container = document.getElementById('managerTableData');
+            container.innerHTML = '';
+            
             let onTime = 0, late = 0, violations = 0;
 
-            // LOGIKA KEHADIRAN UNIK: UserID + Tanggal Presensi
-            const uniqueAttendanceSet = new Set();
-            
-            container.innerHTML = '';
-
+            // --- LOGIKA GROUPING SEBARIS ---
+            const grouped = {};
             data.forEach(item => {
-                const checkInTime = new Date(item.check_in);
+                const dateKey = new Date(item.check_in).toISOString().split('T')[0];
+                const groupKey = `${item.user_id}-${dateKey}`;
                 
-                // Tambahkan ke set kehadiran unik (Format: userID-YYYY-MM-DD)
-                const dateKey = `${item.user_id}-${checkInTime.toISOString().split('T')[0]}`;
-                uniqueAttendanceSet.add(dateKey);
-
-                const isWeekend = (checkInTime.getDay() === 0 || checkInTime.getDay() === 6);
-                const isShift2 = item.notes && item.notes.includes('Shift 2');
-                
-                let targetHour = 13; 
-                if (isShift2) {
-                    targetHour = 15;
-                } else {
-                    targetHour = isWeekend ? 12 : 13;
+                if (!grouped[groupKey]) {
+                    grouped[groupKey] = {
+                        masuk: null,
+                        pulang: null,
+                        profile: item.profiles,
+                        branch: item.branches
+                    };
                 }
                 
-                const targetTime = new Date(checkInTime);
-                targetTime.setHours(targetHour, 0, 0, 0);
-                const diffMinutes = (checkInTime - targetTime) / (1000 * 60);
-                
-                let kategori = { text: "SANGAT BAIK", bg: "bg-green-100 text-green-700" };
-                if (diffMinutes > 0 && diffMinutes <= 5) kategori = { text: "BAIK", bg: "bg-blue-100 text-blue-700" };
-                else if (diffMinutes > 5 && diffMinutes <= 15) kategori = { text: "CUKUP", bg: "bg-yellow-100 text-yellow-700" };
-                else if (diffMinutes > 15) kategori = { text: "KURANG", bg: "bg-red-100 text-red-700" };
+                if (item.notes.includes('MASUK')) {
+                    grouped[groupKey].masuk = item;
+                } else if (item.notes.includes('PULANG')) {
+                    grouped[groupKey].pulang = item;
+                }
+            });
 
-                let isLate = diffMinutes > 0;
-                if(isLate) late++; else onTime++;
+            const groupedArray = Object.values(grouped).reverse(); // Balik agar data terbaru di atas
 
-                const radiusLimit = item.branches?.radius_meter || 50;
-                const isViolation = item.distance_meters > radiusLimit;
-                if(isViolation) violations++;
+            groupedArray.forEach(group => {
+                const mainRecord = group.masuk || group.pulang;
+                if (!mainRecord) return;
 
-                // Koordinat untuk link lokasi
-                const mapsUrl = `https://www.google.com/maps?q=${item.lat},${item.long}`;
+                let jamMasukHTML = `<span class="text-gray-400 text-xs italic">Belum Absen</span>`;
+                let jamPulangHTML = `<span class="text-gray-400 text-xs italic">Belum Absen</span>`;
+                let statusMasukHTML = `-`;
+                let jarakHTML = `-`;
+                let lokasiHTML = `-`;
+
+                if (group.masuk) {
+                    const tMasuk = new Date(group.masuk.check_in);
+                    jamMasukHTML = `
+                        <p class="text-xs font-bold text-indigo-600">${tMasuk.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})} WIB</p>
+                        <p class="text-[9px] text-gray-400">${tMasuk.toLocaleDateString('id-ID', {day:'numeric', month:'short'})}</p>
+                    `;
+
+                    // Hitung Keterlambatan
+                    const isWeekend = (tMasuk.getDay() === 0 || tMasuk.getDay() === 6);
+                    const isShift2 = group.masuk.notes.includes('Shift 2');
+                    let targetHour = isShift2 ? 15 : (isWeekend ? 12 : 13);
+                    
+                    const targetTime = new Date(tMasuk);
+                    targetTime.setHours(targetHour, 0, 0, 0);
+                    const diffMinutes = (tMasuk - targetTime) / (1000 * 60);
+
+                    let kategori = { text: "SANGAT BAIK", bg: "bg-green-100 text-green-700" };
+                    if (diffMinutes > 0 && diffMinutes <= 5) kategori = { text: "BAIK", bg: "bg-blue-100 text-blue-700" };
+                    else if (diffMinutes > 5 && diffMinutes <= 15) kategori = { text: "CUKUP", bg: "bg-yellow-100 text-yellow-700" };
+                    else if (diffMinutes > 15) kategori = { text: "KURANG", bg: "bg-red-100 text-red-700" };
+
+                    statusMasukHTML = `<span class="${kategori.bg} text-[9px] font-black px-2 py-1 rounded tracking-widest">${kategori.text}</span>`;
+                    
+                    if(diffMinutes > 0) late++; else onTime++;
+
+                    // Jarak & Lokasi
+                    const radiusLimit = group.branch?.radius_meter || 50;
+                    const isViolation = group.masuk.distance_meters > radiusLimit;
+                    if(isViolation) violations++;
+
+                    jarakHTML = `<span class="font-mono text-xs ${isViolation ? 'text-rose-500 font-bold' : 'text-emerald-600'}">${Math.round(group.masuk.distance_meters)}m</span>`;
+                    
+                    const mapsUrl = `https://www.google.com/maps?q=${group.masuk.lat},${group.masuk.long}`;
+                    lokasiHTML = `
+                        <a href="${mapsUrl}" target="_blank" class="flex items-center gap-1 text-blue-600 hover:text-blue-800 transition-all">
+                            <span class="text-[10px] font-mono font-bold underline">${group.masuk.lat.toFixed(4)}, ${group.masuk.long.toFixed(4)}</span>
+                        </a>
+                    `;
+                }
+
+                if (group.pulang) {
+                    const tPulang = new Date(group.pulang.check_in);
+                    jamPulangHTML = `
+                        <p class="text-xs font-bold text-gray-700">${tPulang.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})} WIB</p>
+                        <p class="text-[9px] text-gray-400">${tPulang.toLocaleDateString('id-ID', {day:'numeric', month:'short'})}</p>
+                    `;
+                }
 
                 container.innerHTML += `
                     <tr class="hover:bg-gray-50/50 transition">
                         <td class="px-6 py-4">
-                            <p class="font-bold text-gray-800">${item.profiles?.full_name || 'User'}</p>
-                            <p class="text-[10px] text-gray-500 font-bold">${item.notes || '-'}</p>
+                            <p class="font-bold text-gray-800">${group.profile?.full_name || 'User'}</p>
+                            <p class="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">${group.masuk?.notes.split(' - ')[1] || 'Default'}</p>
                         </td>
-                        <td class="px-6 py-4">
-                            <p class="text-xs font-medium text-gray-600">${checkInTime.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})} WIB</p>
-                            <p class="text-[10px] text-gray-400">${checkInTime.toLocaleDateString('id-ID', {day:'numeric', month:'short'})}</p>
-                        </td>
-                        <td class="px-6 py-4">
-                            <span class="${kategori.bg} text-[10px] font-black px-2 py-1 rounded tracking-widest">${kategori.text}</span>
-                        </td>
-                        <td class="px-6 py-4">
-                            <span class="font-mono text-xs ${isViolation ? 'text-rose-500 font-bold' : 'text-emerald-600'}">${Math.round(item.distance_meters)}m</span>
-                        </td>
-                        <td class="px-6 py-4">
-                            <a href="${mapsUrl}" target="_blank" class="flex items-center gap-1 text-blue-600 hover:text-blue-800 transition-all">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
-                                <span class="text-[10px] font-mono font-bold">${item.lat.toFixed(4)}, ${item.long.toFixed(4)}</span>
-                            </a>
-                        </td>
+                        <td class="px-6 py-4">${jamMasukHTML}</td>
+                        <td class="px-6 py-4">${jamPulangHTML}</td>
+                        <td class="px-6 py-4">${statusMasukHTML}</td>
+                        <td class="px-6 py-4">${jarakHTML}</td>
+                        <td class="px-6 py-4">${lokasiHTML}</td>
                         <td class="px-6 py-4 text-right flex justify-end gap-2">
-                            <button onclick="window.open('${item.photo_url}', '_blank')" class="text-indigo-600 hover:text-indigo-800 font-bold text-[10px] bg-indigo-50 px-2 py-1 rounded transition-all">Foto</button>
-                            <button onclick="editRecord('${item.id}', '${item.notes}')" class="text-orange-600 hover:text-orange-800 font-bold text-[10px] bg-orange-50 px-2 py-1 rounded transition-all">Edit</button>
-                            <button onclick="deleteRecord('${item.id}')" class="text-red-600 hover:text-red-800 font-bold text-[10px] bg-red-50 px-2 py-1 rounded transition-all">Hapus</button>
+                             <button onclick="window.open('${group.masuk?.photo_url || group.pulang?.photo_url}', '_blank')" class="text-indigo-600 hover:text-indigo-800 font-bold text-[10px] bg-indigo-50 px-2 py-1 rounded transition-all">Foto</button>
+                             <button onclick="deleteRecord('${mainRecord.id}')" class="text-red-600 hover:text-red-800 font-bold text-[10px] bg-red-50 px-2 py-1 rounded transition-all">Hapus</button>
                         </td>
                     </tr>
                 `;
             });
 
-            // Update statistik dengan jumlah unik (1 orang 1 hari = 1 kehadiran)
-            document.getElementById('recordCount').innerText = uniqueAttendanceSet.size;
+            // Update statistik berdasarkan jumlah baris yang sudah digabung
+            document.getElementById('recordCount').innerText = groupedArray.length;
             document.getElementById('onTimeCount').innerText = onTime;
             document.getElementById('lateCount').innerText = late;
             document.getElementById('radiusViolation').innerText = violations;
-            document.getElementById('onTimeRate').innerText = data.length > 0 ? Math.round((onTime/data.length)*100) + '%' : '0%';
+            document.getElementById('onTimeRate').innerText = groupedArray.length > 0 ? Math.round((onTime/groupedArray.length)*100) + '%' : '0%';
         }
 
         async function deleteRecord(id) {
-            if(confirm('Apakah Anda yakin ingin menghapus data presensi ini?')) {
+            if(confirm('Hapus data presensi ini? Jika data Masuk dihapus maka data Pulang juga akan hilang di tampilan karena basis grouping.')) {
                 const { error } = await supabaseClient.from('attendance').delete().eq('id', id);
-                if(error) alert('Gagal menghapus: ' + error.message);
-                else loadManagerData();
-            }
-        }
-
-        async function editRecord(id, currentNotes) {
-            const newNotes = prompt('Sunting Keterangan Login (Shift/Status):', currentNotes);
-            if(newNotes !== null && newNotes.trim() !== "") {
-                const { error } = await supabaseClient.from('attendance').update({ notes: newNotes }).eq('id', id);
-                if(error) alert('Gagal menyunting: ' + error.message);
+                if(error) alert('Gagal: ' + error.message);
                 else loadManagerData();
             }
         }
 
         function exportManagerData() {
-            if(globalAttendanceData.length === 0) return alert('Tidak ada data untuk diekspor.');
-            
-            const worksheet = XLSX.utils.json_to_sheet(globalAttendanceData.map(a => {
-                const checkInTime = new Date(a.check_in);
-                return {
-                    "Nama Pegawai": a.profiles?.full_name,
-                    "Tanggal": checkInTime.toLocaleDateString('id-ID'),
-                    "Waktu": checkInTime.toLocaleTimeString('id-ID'),
-                    "Keterangan": a.notes,
-                    "Jarak (Meter)": Math.round(a.distance_meters),
-                    "Lokasi (Lat, Long)": `${a.lat}, ${a.long}`,
-                    "Pelanggaran Radius": a.distance_meters > (a.branches?.radius_meter || 50) ? "Ya" : "Tidak"
-                };
-            }));
+            if(globalAttendanceData.length === 0) return alert('Tidak ada data.');
+            const worksheet = XLSX.utils.json_to_sheet(globalAttendanceData);
             const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan Presensi");
-            XLSX.writeFile(workbook, "Laporan_Manager_TC.xlsx");
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan");
+            XLSX.writeFile(workbook, "Laporan_Manager.xlsx");
         }
 
         async function logout() {
             await supabaseClient.auth.signOut();
             window.location.href = 'login.html';
         }
-
     </script>
 </body>
 </html>
