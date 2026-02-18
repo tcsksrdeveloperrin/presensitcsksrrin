@@ -8,15 +8,14 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
     <style>
-        /* Fix Kamera Zoom & No Mirror */
         #video-container {
             position: relative;
             width: 100%;
-            padding-top: 133%; /* Aspect Ratio 4:3 */
+            padding-top: 133%; 
             background: #000;
             border-radius: 2rem;
             overflow: hidden;
-            margin-top: -60px; /* Menumpuk di atas header melengkung */
+            margin-top: -60px; 
             z-index: 10;
         }
         #video, #capturedImage {
@@ -26,14 +25,13 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-            transform: none; /* No Mirroring */
+            transform: none; 
         }
         #capturedImage {
             display: none;
         }
-        /* Desain Header Melengkung */
         .header-curve {
-            background-color: #2563eb; /* Royal Blue */
+            background-color: #2563eb; 
             height: 160px;
             border-bottom-left-radius: 50px;
             border-bottom-right-radius: 50px;
@@ -76,10 +74,16 @@
             </div>
 
             <div class="space-y-4" id="formSection">
-                <select id="attendanceType" class="w-full p-4 rounded-2xl border-none shadow-md font-bold text-gray-700 bg-white focus:ring-2 focus:ring-blue-500">
-                    <option value="Masuk">Masuk Kerja</option>
-                    <option value="Pulang">Pulang Kerja</option>
-                </select>
+                <div class="flex gap-2">
+                    <select id="attendanceType" class="flex-1 p-4 rounded-2xl border-none shadow-md font-bold text-gray-700 bg-white focus:ring-2 focus:ring-blue-500">
+                        <option value="Masuk">Masuk</option>
+                        <option value="Pulang">Pulang</option>
+                    </select>
+                    <select id="shiftKerja" class="flex-[2] p-4 rounded-2xl border-none shadow-md font-bold text-gray-700 bg-white focus:ring-2 focus:ring-blue-500">
+                        <option value="Shift 1">Shift 1 (13:00 - 21:00)</option>
+                        <option value="Shift 2">Shift 2 (15:00 - 23:00)</option>
+                    </select>
+                </div>
 
                 <div id="locationStatus" class="flex items-center justify-center gap-2 text-sm font-bold text-blue-600 bg-blue-50 p-3 rounded-2xl border border-blue-100">
                     <div class="loader"></div> Mencari Lokasi...
@@ -222,6 +226,9 @@
             imgPreview.style.display = 'block';
             video.style.display = 'none';
 
+            // Menampilkan info shift di preview
+            document.getElementById('prevShift').innerText = document.getElementById('shiftKerja').value;
+
             document.getElementById('formSection').classList.add('hidden');
             document.getElementById('instructionText').classList.add('hidden');
             document.getElementById('previewSection').classList.remove('hidden');
@@ -279,11 +286,14 @@
                 const distance = calculateDistance(userCoords.latitude, userCoords.longitude, 
                                                 currentProfile.branches?.lat, currentProfile.branches?.lng);
 
+                const tipeAbsen = document.getElementById('attendanceType').value;
+                const shiftDipilih = document.getElementById('shiftKerja').value;
+
                 const { error: dbErr } = await supabaseClient.from('attendance').insert([{
                     user_id: user.id,
                     branch_id: currentProfile.branch_id,
                     photo_url: publicUrl,
-                    notes: document.getElementById('attendanceType').value,
+                    notes: `${tipeAbsen} - ${shiftDipilih}`,
                     lat: userCoords.latitude,
                     long: userCoords.longitude,
                     distance_meters: distance,
