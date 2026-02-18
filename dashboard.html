@@ -50,11 +50,12 @@
     <main class="p-6 max-w-7xl mx-auto">
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
-                <p class="text-gray-400 text-[10px] font-bold uppercase tracking-wider">Total Presensi</p>
+                <p class="text-gray-400 text-[10px] font-bold uppercase tracking-wider">Total Kehadiran</p>
                 <div class="flex items-end justify-between mt-1">
                     <h2 id="recordCount" class="text-3xl font-black text-gray-800">0</h2>
-                    <span class="text-xs font-bold text-indigo-500 bg-indigo-50 px-2 py-1 rounded">Records</span>
+                    <span class="text-xs font-bold text-indigo-500 bg-indigo-50 px-2 py-1 rounded">Pegawai</span>
                 </div>
+                <p class="text-[9px] text-gray-400 mt-2 font-medium">*Dihitung per orang per hari</p>
             </div>
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
                 <p class="text-gray-400 text-[10px] font-bold uppercase tracking-wider">Tepat Waktu</p>
@@ -94,6 +95,7 @@
                             <th class="px-6 py-4">Waktu Check-In</th>
                             <th class="px-6 py-4">Kategori Jam</th>
                             <th class="px-6 py-4">Jarak</th>
+                            <th class="px-6 py-4">Lokasi Presensi</th>
                             <th class="px-6 py-4 text-right">Aksi</th>
                         </tr>
                     </thead>
@@ -110,7 +112,6 @@
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         let globalAttendanceData = [];
 
-        // Set Default Date Input to Today
         document.addEventListener("DOMContentLoaded", () => {
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('filterDate').value = today;
@@ -137,7 +138,6 @@
                 document.getElementById('managerWelcome').innerText = `Halo, ${profile.full_name}`;
                 document.getElementById('branchIdentity').innerText = profile.branches?.name || 'Cabang';
 
-                // Logika Filter Kalender Real
                 const dateInput = document.getElementById('filterDate').value;
                 const rangeInput = document.getElementById('filterRange').value;
                 
@@ -152,7 +152,6 @@
                     const day = startDate.getDay() || 7; 
                     startDate.setDate(startDate.getDate() - day + 1);
                     startDate.setHours(0,0,0,0);
-                    
                     endDate = new Date(startDate);
                     endDate.setDate(endDate.getDate() + 6);
                     endDate.setHours(23,59,59,999);
@@ -173,7 +172,7 @@
                 renderDashboard(attendance);
 
             } catch (err) {
-                container.innerHTML = `<tr><td colspan="5" class="p-10 text-center text-red-500 font-bold">${err.message}</td></tr>`;
+                container.innerHTML = `<tr><td colspan="6" class="p-10 text-center text-red-500 font-bold">${err.message}</td></tr>`;
             }
         }
 
@@ -182,15 +181,21 @@
             const container = document.getElementById('managerTableData');
             let onTime = 0, late = 0, violations = 0;
 
-            document.getElementById('recordCount').innerText = data.length;
+            // LOGIKA KEHADIRAN UNIK: UserID + Tanggal Presensi
+            const uniqueAttendanceSet = new Set();
+            
             container.innerHTML = '';
 
             data.forEach(item => {
                 const checkInTime = new Date(item.check_in);
+                
+                // Tambahkan ke set kehadiran unik (Format: userID-YYYY-MM-DD)
+                const dateKey = `${item.user_id}-${checkInTime.toISOString().split('T')[0]}`;
+                uniqueAttendanceSet.add(dateKey);
+
                 const isWeekend = (checkInTime.getDay() === 0 || checkInTime.getDay() === 6);
                 const isShift2 = item.notes && item.notes.includes('Shift 2');
                 
-                // Set Jam Kedatangan Berdasarkan Shift & Hari
                 let targetHour = 13; 
                 if (isShift2) {
                     targetHour = 15;
@@ -202,7 +207,6 @@
                 targetTime.setHours(targetHour, 0, 0, 0);
                 const diffMinutes = (checkInTime - targetTime) / (1000 * 60);
                 
-                // Kategorisasi Toleransi Keterlambatan
                 let kategori = { text: "SANGAT BAIK", bg: "bg-green-100 text-green-700" };
                 if (diffMinutes > 0 && diffMinutes <= 5) kategori = { text: "BAIK", bg: "bg-blue-100 text-blue-700" };
                 else if (diffMinutes > 5 && diffMinutes <= 15) kategori = { text: "CUKUP", bg: "bg-yellow-100 text-yellow-700" };
@@ -214,6 +218,9 @@
                 const radiusLimit = item.branches?.radius_meter || 50;
                 const isViolation = item.distance_meters > radiusLimit;
                 if(isViolation) violations++;
+
+                // Koordinat untuk link lokasi
+                const mapsUrl = `https://www.google.com/maps?q=${item.lat},${item.long}`;
 
                 container.innerHTML += `
                     <tr class="hover:bg-gray-50/50 transition">
@@ -231,6 +238,15 @@
                         <td class="px-6 py-4">
                             <span class="font-mono text-xs ${isViolation ? 'text-rose-500 font-bold' : 'text-emerald-600'}">${Math.round(item.distance_meters)}m</span>
                         </td>
+                        <td class="px-6 py-4">
+                            <a href="${mapsUrl}" target="_blank" class="flex items-center gap-1 text-blue-600 hover:text-blue-800 transition-all">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                <span class="text-[10px] font-mono font-bold">${item.lat.toFixed(4)}, ${item.long.toFixed(4)}</span>
+                            </a>
+                        </td>
                         <td class="px-6 py-4 text-right flex justify-end gap-2">
                             <button onclick="window.open('${item.photo_url}', '_blank')" class="text-indigo-600 hover:text-indigo-800 font-bold text-[10px] bg-indigo-50 px-2 py-1 rounded transition-all">Foto</button>
                             <button onclick="editRecord('${item.id}', '${item.notes}')" class="text-orange-600 hover:text-orange-800 font-bold text-[10px] bg-orange-50 px-2 py-1 rounded transition-all">Edit</button>
@@ -240,6 +256,8 @@
                 `;
             });
 
+            // Update statistik dengan jumlah unik (1 orang 1 hari = 1 kehadiran)
+            document.getElementById('recordCount').innerText = uniqueAttendanceSet.size;
             document.getElementById('onTimeCount').innerText = onTime;
             document.getElementById('lateCount').innerText = late;
             document.getElementById('radiusViolation').innerText = violations;
@@ -274,6 +292,7 @@
                     "Waktu": checkInTime.toLocaleTimeString('id-ID'),
                     "Keterangan": a.notes,
                     "Jarak (Meter)": Math.round(a.distance_meters),
+                    "Lokasi (Lat, Long)": `${a.lat}, ${a.long}`,
                     "Pelanggaran Radius": a.distance_meters > (a.branches?.radius_meter || 50) ? "Ya" : "Tidak"
                 };
             }));
