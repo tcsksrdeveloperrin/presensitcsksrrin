@@ -55,7 +55,7 @@
                     <h2 id="recordCount" class="text-3xl font-black text-gray-800">0</h2>
                     <span class="text-xs font-bold text-indigo-500 bg-indigo-50 px-2 py-1 rounded">Pegawai</span>
                 </div>
-                <p class="text-[9px] text-gray-400 mt-2 font-medium">*Dihitung per orang per hari</p>
+                <p class="text-[9px] text-gray-400 mt-2 font-medium">*Dihitung 1 orang/hari (Masuk & Pulang)</p>
             </div>
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
                 <p class="text-gray-400 text-[10px] font-bold uppercase tracking-wider">Tepat Waktu</p>
@@ -94,8 +94,8 @@
                             <th class="px-6 py-4">Pegawai & Info</th>
                             <th class="px-6 py-4">Jam Masuk</th>
                             <th class="px-6 py-4">Jam Pulang</th>
-                            <th class="px-6 py-4">Status Masuk</th>
-                            <th class="px-6 py-4">Jarak (In)</th>
+                            <th class="px-6 py-4">Status</th>
+                            <th class="px-6 py-4">Jarak</th>
                             <th class="px-6 py-4">Lokasi Presensi</th>
                             <th class="px-6 py-4 text-right">Aksi</th>
                         </tr>
@@ -167,7 +167,7 @@
                     .eq('branch_id', profile.branch_id)
                     .gte('check_in', startDate.toISOString())
                     .lte('check_in', endDate.toISOString())
-                    .order('check_in', { ascending: true }); // Ubah ke ascending untuk mempermudah grouping
+                    .order('check_in', { ascending: true });
 
                 if (error) throw error;
                 renderDashboard(attendance);
@@ -184,10 +184,9 @@
             
             let onTime = 0, late = 0, violations = 0;
 
-            // --- LOGIKA GROUPING SEBARIS ---
             const grouped = {};
             data.forEach(item => {
-                const dateKey = new Date(item.check_in).toISOString().split('T')[0];
+                const dateKey = new Date(item.check_in).toLocaleDateString('en-CA');
                 const groupKey = `${item.user_id}-${dateKey}`;
                 
                 if (!grouped[groupKey]) {
@@ -199,30 +198,31 @@
                     };
                 }
                 
-                if (item.notes.includes('MASUK')) {
+                const note = item.notes.toUpperCase();
+                if (note.includes('MASUK')) {
                     grouped[groupKey].masuk = item;
-                } else if (item.notes.includes('PULANG')) {
+                } else if (note.includes('PULANG')) {
                     grouped[groupKey].pulang = item;
                 }
             });
 
-            const groupedArray = Object.values(grouped).reverse(); // Balik agar data terbaru di atas
+            const groupedArray = Object.values(grouped).reverse();
 
             groupedArray.forEach(group => {
                 const mainRecord = group.masuk || group.pulang;
                 if (!mainRecord) return;
 
-                let jamMasukHTML = `<span class="text-gray-400 text-xs italic">Belum Absen</span>`;
-                let jamPulangHTML = `<span class="text-gray-400 text-xs italic">Belum Absen</span>`;
-                let statusMasukHTML = `-`;
+                let jamMasukHTML = `<span class="text-gray-400 text-[10px] italic">Belum Absen</span>`;
+                let jamPulangHTML = `<span class="text-gray-400 text-[10px] italic">Belum Absen</span>`;
+                let statusHTML = `-`;
                 let jarakHTML = `-`;
-                let lokasiHTML = `-`;
+                let alamatHTML = `<span class="text-gray-400 text-[10px]">Tidak ada data</span>`;
 
                 if (group.masuk) {
                     const tMasuk = new Date(group.masuk.check_in);
                     jamMasukHTML = `
                         <p class="text-xs font-bold text-indigo-600">${tMasuk.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})} WIB</p>
-                        <p class="text-[9px] text-gray-400">${tMasuk.toLocaleDateString('id-ID', {day:'numeric', month:'short'})}</p>
+                        <p class="text-[9px] text-gray-400 font-bold">${tMasuk.toLocaleDateString('id-ID', {day:'numeric', month:'short'})}</p>
                     `;
 
                     // Hitung Keterlambatan
@@ -239,8 +239,7 @@
                     else if (diffMinutes > 5 && diffMinutes <= 15) kategori = { text: "CUKUP", bg: "bg-yellow-100 text-yellow-700" };
                     else if (diffMinutes > 15) kategori = { text: "KURANG", bg: "bg-red-100 text-red-700" };
 
-                    statusMasukHTML = `<span class="${kategori.bg} text-[9px] font-black px-2 py-1 rounded tracking-widest">${kategori.text}</span>`;
-                    
+                    statusHTML = `<span class="${kategori.bg} text-[9px] font-black px-2 py-1 rounded tracking-widest">${kategori.text}</span>`;
                     if(diffMinutes > 0) late++; else onTime++;
 
                     // Jarak & Lokasi
@@ -250,33 +249,30 @@
 
                     jarakHTML = `<span class="font-mono text-xs ${isViolation ? 'text-rose-500 font-bold' : 'text-emerald-600'}">${Math.round(group.masuk.distance_meters)}m</span>`;
                     
-                    const mapsUrl = `https://www.google.com/maps?q=${group.masuk.lat},${group.masuk.long}`;
-                    lokasiHTML = `
-                        <a href="${mapsUrl}" target="_blank" class="flex items-center gap-1 text-blue-600 hover:text-blue-800 transition-all">
-                            <span class="text-[10px] font-mono font-bold underline">${group.masuk.lat.toFixed(4)}, ${group.masuk.long.toFixed(4)}</span>
-                        </a>
-                    `;
+                    // Tampilkan alamat dari database
+                    if (group.masuk.location_address) {
+                        alamatHTML = `<p class="text-[10px] text-gray-500 leading-tight line-clamp-2 max-w-[150px]">${group.masuk.location_address}</p>`;
+                    }
                 }
 
                 if (group.pulang) {
                     const tPulang = new Date(group.pulang.check_in);
                     jamPulangHTML = `
                         <p class="text-xs font-bold text-gray-700">${tPulang.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})} WIB</p>
-                        <p class="text-[9px] text-gray-400">${tPulang.toLocaleDateString('id-ID', {day:'numeric', month:'short'})}</p>
                     `;
                 }
 
                 container.innerHTML += `
-                    <tr class="hover:bg-gray-50/50 transition">
+                    <tr class="hover:bg-gray-50/50 transition border-b border-gray-50">
                         <td class="px-6 py-4">
                             <p class="font-bold text-gray-800">${group.profile?.full_name || 'User'}</p>
-                            <p class="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">${group.masuk?.notes.split(' - ')[1] || 'Default'}</p>
+                            <p class="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">${group.masuk?.notes || group.pulang?.notes || '-'}</p>
                         </td>
                         <td class="px-6 py-4">${jamMasukHTML}</td>
                         <td class="px-6 py-4">${jamPulangHTML}</td>
-                        <td class="px-6 py-4">${statusMasukHTML}</td>
+                        <td class="px-6 py-4">${statusHTML}</td>
                         <td class="px-6 py-4">${jarakHTML}</td>
-                        <td class="px-6 py-4">${lokasiHTML}</td>
+                        <td class="px-6 py-4">${alamatHTML}</td>
                         <td class="px-6 py-4 text-right flex justify-end gap-2">
                              <button onclick="window.open('${group.masuk?.photo_url || group.pulang?.photo_url}', '_blank')" class="text-indigo-600 hover:text-indigo-800 font-bold text-[10px] bg-indigo-50 px-2 py-1 rounded transition-all">Foto</button>
                              <button onclick="deleteRecord('${mainRecord.id}')" class="text-red-600 hover:text-red-800 font-bold text-[10px] bg-red-50 px-2 py-1 rounded transition-all">Hapus</button>
@@ -285,7 +281,6 @@
                 `;
             });
 
-            // Update statistik berdasarkan jumlah baris yang sudah digabung
             document.getElementById('recordCount').innerText = groupedArray.length;
             document.getElementById('onTimeCount').innerText = onTime;
             document.getElementById('lateCount').innerText = late;
@@ -294,7 +289,7 @@
         }
 
         async function deleteRecord(id) {
-            if(confirm('Hapus data presensi ini? Jika data Masuk dihapus maka data Pulang juga akan hilang di tampilan karena basis grouping.')) {
+            if(confirm('Hapus data presensi ini?')) {
                 const { error } = await supabaseClient.from('attendance').delete().eq('id', id);
                 if(error) alert('Gagal: ' + error.message);
                 else loadManagerData();
