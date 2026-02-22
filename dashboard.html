@@ -249,7 +249,6 @@
 
                     jarakHTML = `<span class="font-mono text-xs ${isViolation ? 'text-rose-500 font-bold' : 'text-emerald-600'}">${Math.round(group.masuk.distance_meters)}m</span>`;
                     
-                    // Tampilkan alamat dari database
                     if (group.masuk.location_address) {
                         alamatHTML = `<p class="text-[10px] text-gray-500 leading-tight line-clamp-2 max-w-[150px]">${group.masuk.location_address}</p>`;
                     }
@@ -262,11 +261,22 @@
                     `;
                 }
 
+                // PERBAIKAN: Menyiapkan parameter untuk fungsi edit shift dan hapus yang mencakup Masuk dan Pulang
+                const notesToDisplay = group.masuk?.notes || group.pulang?.notes || '-';
+                const idToEdit = group.masuk ? group.masuk.id : (group.pulang ? group.pulang.id : null);
+                const editBtnHtml = idToEdit ? `<button onclick="editShift('${idToEdit}', '${notesToDisplay}')" class="ml-2 text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-0.5 rounded text-[9px] font-bold transition-all border border-blue-100">✎ Edit</button>` : '';
+
+                const idMasuk = group.masuk ? group.masuk.id : null;
+                const idPulang = group.pulang ? group.pulang.id : null;
+
                 container.innerHTML += `
                     <tr class="hover:bg-gray-50/50 transition border-b border-gray-50">
                         <td class="px-6 py-4">
                             <p class="font-bold text-gray-800">${group.profile?.full_name || 'User'}</p>
-                            <p class="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">${group.masuk?.notes || group.pulang?.notes || '-'}</p>
+                            <div class="flex items-center mt-1">
+                                <p class="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">${notesToDisplay}</p>
+                                ${editBtnHtml}
+                            </div>
                         </td>
                         <td class="px-6 py-4">${jamMasukHTML}</td>
                         <td class="px-6 py-4">${jamPulangHTML}</td>
@@ -275,7 +285,7 @@
                         <td class="px-6 py-4">${alamatHTML}</td>
                         <td class="px-6 py-4 text-right flex justify-end gap-2">
                              <button onclick="window.open('${group.masuk?.photo_url || group.pulang?.photo_url}', '_blank')" class="text-indigo-600 hover:text-indigo-800 font-bold text-[10px] bg-indigo-50 px-2 py-1 rounded transition-all">Foto</button>
-                             <button onclick="deleteRecord('${mainRecord.id}')" class="text-red-600 hover:text-red-800 font-bold text-[10px] bg-red-50 px-2 py-1 rounded transition-all">Hapus</button>
+                             <button onclick="deleteRecord('${idMasuk}', '${idPulang}')" class="text-red-600 hover:text-red-800 font-bold text-[10px] bg-red-50 px-2 py-1 rounded transition-all">Hapus</button>
                         </td>
                     </tr>
                 `;
@@ -288,11 +298,54 @@
             document.getElementById('onTimeRate').innerText = groupedArray.length > 0 ? Math.round((onTime/groupedArray.length)*100) + '%' : '0%';
         }
 
-        async function deleteRecord(id) {
-            if(confirm('Hapus data presensi ini?')) {
-                const { error } = await supabaseClient.from('attendance').delete().eq('id', id);
-                if(error) alert('Gagal: ' + error.message);
-                else loadManagerData();
+        // FUNGSI BARU: Edit Shift
+        async function editShift(id, currentNotes) {
+            if (!id || id === 'null') return alert('Data tidak valid untuk diedit.');
+            
+            const newNotes = prompt("Ketik Keterangan Shift Baru (Anda bisa mengetik pengaturan jam/shift secara bebas):", currentNotes);
+            
+            if (newNotes !== null && newNotes.trim() !== "" && newNotes !== currentNotes) {
+                try {
+                    const { error } = await supabaseClient
+                        .from('attendance')
+                        .update({ notes: newNotes })
+                        .eq('id', id);
+                        
+                    if (error) throw error;
+                    
+                    alert('Keterangan shift berhasil diperbarui!');
+                    loadManagerData();
+                } catch (err) {
+                    alert('Gagal mengedit: ' + err.message + '\n\n*Penting: Pastikan RLS (Row Level Security) Update diizinkan untuk Manager di Supabase.');
+                }
+            }
+        }
+
+        // PERBAIKAN: Menghapus data spesifik untuk Masuk dan Pulang jika ada dalam 1 baris
+        async function deleteRecord(idMasuk, idPulang) {
+            if(confirm('Hapus data presensi ini? (Ini akan menghapus catatan masuk dan pulang pada baris ini)')) {
+                let isSuccess = true;
+                let errorMessage = "";
+
+                try {
+                    if (idMasuk && idMasuk !== 'null') {
+                        const { error } = await supabaseClient.from('attendance').delete().eq('id', idMasuk);
+                        if (error) { isSuccess = false; errorMessage += "Masuk: " + error.message + " "; }
+                    }
+                    if (idPulang && idPulang !== 'null') {
+                        const { error } = await supabaseClient.from('attendance').delete().eq('id', idPulang);
+                        if (error) { isSuccess = false; errorMessage += "Pulang: " + error.message; }
+                    }
+
+                    if (!isSuccess) {
+                        alert('Gagal menghapus beberapa data:\n' + errorMessage + '\n\n*Penting: Pastikan RLS (Row Level Security) Delete diizinkan untuk Manager di Supabase.');
+                    } else {
+                        alert('Data berhasil dihapus!');
+                        loadManagerData();
+                    }
+                } catch (err) {
+                    alert('Terjadi kesalahan sistem: ' + err.message);
+                }
             }
         }
 
