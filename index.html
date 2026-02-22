@@ -60,7 +60,6 @@
     </div>
 
     <div class="max-w-md mx-auto px-5 pb-32">
-        
         <div id="cameraSection">
             <div id="video-container" class="shadow-2xl border-[6px] border-white">
                 <video id="video" autoplay playsinline></video>
@@ -80,8 +79,7 @@
                         <option value="Pulang">Pulang</option>
                     </select>
                     <select id="shiftKerja" class="flex-[2] p-4 rounded-2xl border-none shadow-md font-bold text-gray-700 bg-white focus:ring-2 focus:ring-blue-500">
-                        <option value="Shift 1">Shift 1 (13:00 - 21:00)</option>
-                        <option value="Shift 2">Shift 2 (15:00 - 23:00)</option>
+                        <option value="Reguler">Memuat Shift...</option>
                     </select>
                 </div>
 
@@ -179,16 +177,29 @@
                     const now = new Date();
                     const options = { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' };
                     document.getElementById('prevDate').innerText = now.toLocaleDateString('id-ID', options);
+                    
+                    // Ambil Data Shift Dinamis
+                    loadShifts(profile.branch_id);
                 }
 
-                navigator.geolocation.watchPosition(
-                    successLocation, 
-                    errorLocation, 
-                    { enableHighAccuracy: true, maximumAge: 10000 }
-                );
+                navigator.geolocation.watchPosition(successLocation, errorLocation, { enableHighAccuracy: true });
 
             } catch (err) {
                 alert("Error Init: " + err.message);
+            }
+        }
+
+        async function loadShifts(branchId) {
+            const { data: shifts } = await supabaseClient
+                .from('shifts')
+                .select('*')
+                .eq('branch_id', branchId);
+            
+            const select = document.getElementById('shiftKerja');
+            if(shifts && shifts.length > 0) {
+                select.innerHTML = shifts.map(s => `<option value="${s.shift_name}">${s.shift_name} (${s.start_time.substring(0,5)} - ${s.end_time.substring(0,5)})</option>`).join('');
+            } else {
+                select.innerHTML = `<option value="Reguler">Reguler (13:00 - 21:00)</option>`;
             }
         }
 
@@ -196,15 +207,11 @@
             userCoords = pos.coords;
             const btn = document.getElementById('btnCapture');
             const status = document.getElementById('locationStatus');
-            
-            status.innerHTML = `<i class="ri-checkbox-circle-fill text-green-500 text-lg"></i> <span class="text-green-600">Lokasi Sesuai (Siap Absen)</span>`;
-            status.className = "flex items-center justify-center gap-2 text-sm font-bold text-green-600 bg-green-50 p-3 rounded-2xl border border-green-100 shadow-sm";
-            
+            status.innerHTML = `<i class="ri-checkbox-circle-fill text-green-500 text-lg"></i> <span class="text-green-600">Lokasi Sesuai</span>`;
             document.getElementById('coordsText').innerText = `Lat: ${pos.coords.latitude.toFixed(6)}, Long: ${pos.coords.longitude.toFixed(6)}`;
-            
             btn.disabled = false;
             btn.classList.remove('bg-gray-300');
-            btn.classList.add('bg-blue-600', 'shadow-blue-200');
+            btn.classList.add('bg-blue-600');
         }
 
         function errorLocation(err) {
@@ -214,21 +221,15 @@
         async function capturePhoto() {
             const video = document.getElementById('video');
             const canvas = document.getElementById('canvas');
-            const imgPreview = document.getElementById('capturedImage');
-            
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             canvas.getContext('2d').drawImage(video, 0, 0);
-            
             photoBlob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.8));
             
-            imgPreview.src = URL.createObjectURL(photoBlob);
-            imgPreview.style.display = 'block';
+            document.getElementById('capturedImage').src = URL.createObjectURL(photoBlob);
+            document.getElementById('capturedImage').style.display = 'block';
             video.style.display = 'none';
-
-            // Menampilkan info shift di preview
             document.getElementById('prevShift').innerText = document.getElementById('shiftKerja').value;
-
             document.getElementById('formSection').classList.add('hidden');
             document.getElementById('instructionText').classList.add('hidden');
             document.getElementById('previewSection').classList.remove('hidden');
@@ -241,7 +242,6 @@
         function resetCamera() {
             document.getElementById('capturedImage').style.display = 'none';
             document.getElementById('video').style.display = 'block';
-            
             document.getElementById('formSection').classList.remove('hidden');
             document.getElementById('instructionText').classList.remove('hidden');
             document.getElementById('previewSection').classList.add('hidden');
@@ -254,72 +254,49 @@
                 const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
                 const data = await res.json();
                 document.getElementById('addressText').innerText = data.display_name || "Alamat tidak ditemukan";
-            } catch (e) {
-                document.getElementById('addressText').innerText = "Gagal memuat alamat detail";
-            }
+            } catch (e) { document.getElementById('addressText').innerText = "Gagal memuat alamat"; }
         }
 
         async function uploadAttendance() {
             const btn = document.getElementById('btnSubmit');
-            btn.innerText = "MENYIMPAN...";
-            btn.disabled = true;
+            btn.innerText = "MENYIMPAN..."; btn.disabled = true;
 
             try {
                 const { data: { user } } = await supabaseClient.auth.getUser();
                 const branch = (currentProfile.branches?.name || "Pusat").replace(/\s+/g, '_');
                 const name = currentProfile.full_name.replace(/\s+/g, '_');
-                const role = currentProfile.role || "Staff";
                 const date = new Date().toISOString().replace(/[:.]/g, '-');
-                
-                const fileName = `uploads/${branch}/${branch}_${name}_${role}_${date}.jpg`;
+                const fileName = `uploads/${branch}/${name}_${date}.jpg`;
 
-                const { error: upErr } = await supabaseClient.storage
-                    .from('attendance-photos')
-                    .upload(fileName, photoBlob);
-
-                if (upErr) throw new Error("Gagal Upload: " + upErr.message);
-
-                const { data: { publicUrl } } = supabaseClient.storage
-                    .from('attendance-photos')
-                    .getPublicUrl(fileName);
-
-                const distance = calculateDistance(userCoords.latitude, userCoords.longitude, 
-                                                currentProfile.branches?.lat, currentProfile.branches?.lng);
-
-                const tipeAbsen = document.getElementById('attendanceType').value;
-                const shiftDipilih = document.getElementById('shiftKerja').value;
+                await supabaseClient.storage.from('attendance-photos').upload(fileName, photoBlob);
+                const { data: { publicUrl } } = supabaseClient.storage.from('attendance-photos').getPublicUrl(fileName);
 
                 const { error: dbErr } = await supabaseClient.from('attendance').insert([{
                     user_id: user.id,
                     branch_id: currentProfile.branch_id,
                     photo_url: publicUrl,
-                    notes: `${tipeAbsen} - ${shiftDipilih}`,
+                    notes: `${document.getElementById('attendanceType').value} - ${document.getElementById('shiftKerja').value}`,
                     lat: userCoords.latitude,
                     long: userCoords.longitude,
-                    distance_meters: distance,
+                    location_address: document.getElementById('addressText').innerText,
+                    distance_meters: calculateDistance(userCoords.latitude, userCoords.longitude, currentProfile.branches?.lat, currentProfile.branches?.lng),
                     status: 'Hadir'
                 }]);
 
                 if (dbErr) throw dbErr;
-
-                alert("Berhasil disimpan!");
-                window.location.href = "index.html";
-
+                alert("Berhasil!"); window.location.href = "index.html";
             } catch (err) {
                 alert("Gagal: " + err.message);
-                btn.innerText = "SIMPAN KEHADIRAN";
-                btn.disabled = false;
+                btn.innerText = "SIMPAN"; btn.disabled = false;
             }
         }
 
         function calculateDistance(lat1, lon1, lat2, lon2) {
             if(!lat2 || !lon2) return 0;
             const R = 6371e3;
-            const φ1 = lat1 * Math.PI/180;
-            const φ2 = lat2 * Math.PI/180;
-            const Δφ = (lat2-lat1) * Math.PI/180;
-            const Δλ = (lon2-lon1) * Math.PI/180;
-            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2);
+            const φ1 = lat1 * Math.PI/180; const φ2 = lat2 * Math.PI/180;
+            const Δφ = (lat2-lat1) * Math.PI/180; const Δλ = (lon2-lon1) * Math.PI/180;
+            const a = Math.sin(Δφ/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2;
             return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         }
 
