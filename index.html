@@ -73,12 +73,19 @@
             </div>
 
             <div class="space-y-4" id="formSection">
-                <div class="flex gap-2">
-                    <select id="attendanceType" class="flex-1 p-4 rounded-2xl border-none shadow-md font-bold text-gray-700 bg-white focus:ring-2 focus:ring-blue-500">
+                <!-- Baris 1: Pilihan Masuk/Pulang -->
+                <div>
+                    <label class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 block">Jenis Kehadiran</label>
+                    <select id="attendanceType" class="w-full p-4 rounded-2xl border-none shadow-md font-bold text-gray-700 bg-white focus:ring-2 focus:ring-blue-500">
                         <option value="Masuk">Masuk</option>
                         <option value="Pulang">Pulang</option>
                     </select>
-                    <select id="shiftKerja" class="flex-[2] p-4 rounded-2xl border-none shadow-md font-bold text-gray-700 bg-white focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <!-- Baris 2: Pilihan Shift (nama + jam) -->
+                <div>
+                    <label class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 block">Pilih Shift Kerja</label>
+                    <select id="shiftKerja" class="w-full p-4 rounded-2xl border-none shadow-md font-bold text-gray-700 bg-white focus:ring-2 focus:ring-blue-500">
                         <option value="Reguler">Memuat Shift...</option>
                     </select>
                 </div>
@@ -197,7 +204,12 @@
             
             const select = document.getElementById('shiftKerja');
             if(shifts && shifts.length > 0) {
-                select.innerHTML = shifts.map(s => `<option value="${s.shift_name}">${s.shift_name} (${s.start_time.substring(0,5)} - ${s.end_time.substring(0,5)})</option>`).join('');
+                // Tampilkan nama shift beserta jam masuk dan jam pulang
+                select.innerHTML = shifts.map(s => {
+                    const startFormatted = s.start_time ? s.start_time.substring(0, 5) : '--:--';
+                    const endFormatted = s.end_time ? s.end_time.substring(0, 5) : '--:--';
+                    return `<option value="${s.shift_name}">${s.shift_name} (${startFormatted} - ${endFormatted})</option>`;
+                }).join('');
             } else {
                 select.innerHTML = `<option value="Reguler">Reguler (13:00 - 21:00)</option>`;
             }
