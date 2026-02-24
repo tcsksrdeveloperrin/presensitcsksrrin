@@ -31,7 +31,7 @@
         <div class="flex gap-4 items-end">
             <div>
                 <label class="text-[10px] font-bold text-gray-500 uppercase">Kalender Presensi</label>
-                <input type="date" id="filterDate" onchange="loadManagerData()" class="block w-full mt-1 p-2 border border-gray-200 rounded-lg text-sm font-bold text-gray-700 cursor-pointer">
+                <input type="date" id="filterDate" onchange="loadManagerData()" class="block w-full mt-1 p-2 border border-indigo-200 rounded-lg text-sm font-bold text-indigo-700 cursor-pointer focus:ring-2 focus:ring-indigo-500">
             </div>
             <div>
                 <label class="text-[10px] font-bold text-gray-500 uppercase">Rentang Laporan</label>
@@ -42,44 +42,42 @@
                 </select>
             </div>
         </div>
-        <button onclick="exportManagerData()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-md">
-            Export Data (.xlsx)
-        </button>
+        <div class="flex gap-2">
+            <button onclick="addNewShift()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-md">
+                + Atur Shift Baru
+            </button>
+            <button onclick="exportManagerData()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-md">
+                Export (.xlsx)
+            </button>
+        </div>
     </div>
 
     <main class="p-6 max-w-7xl mx-auto">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
                 <p class="text-gray-400 text-[10px] font-bold uppercase tracking-wider">Total Kehadiran</p>
-                <div class="flex items-end justify-between mt-1">
-                    <h2 id="recordCount" class="text-3xl font-black text-emerald-500">0</h2>
-                    <span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">Lengkap</span>
-                </div>
+                <h2 id="recordCount" class="text-3xl font-black text-blue-500">0</h2>
                 <p class="text-[9px] text-gray-400 mt-2 font-medium">*Masuk & Pulang terisi</p>
             </div>
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                <p class="text-gray-400 text-[10px] font-bold uppercase tracking-wider">Tepat Waktu</p>
+                <h2 id="ontimeCount" class="text-3xl font-black text-emerald-500">0</h2>
+                <p class="text-[9px] text-gray-400 mt-2 font-medium">*Status: Sangat Baik</p>
+            </div>
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
                 <p class="text-gray-400 text-[10px] font-bold uppercase tracking-wider">Keterlambatan</p>
-                <div class="flex items-end justify-between mt-1">
-                    <h2 id="lateCount" class="text-3xl font-black text-rose-500">0</h2>
-                    <span class="text-xs font-bold text-rose-600">Late (Kurang)</span>
-                </div>
+                <h2 id="lateCount" class="text-3xl font-black text-rose-500">0</h2>
                 <p class="text-[9px] text-gray-400 mt-2 font-medium">*Kriteria Masuk: Kurang</p>
             </div>
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
                 <p class="text-gray-400 text-[10px] font-bold uppercase tracking-wider">Lembur</p>
-                <div class="flex items-end justify-between mt-1">
-                    <h2 id="lemburCount" class="text-3xl font-black text-purple-500">0</h2>
-                    <span class="text-xs font-bold text-purple-600">Lembur</span>
-                </div>
-                <p class="text-[9px] text-gray-400 mt-2 font-medium">*Pulang melebihi jam shift</p>
+                <h2 id="lemburCount" class="text-3xl font-black text-purple-500">0</h2>
+                <p class="text-[9px] text-gray-400 mt-2 font-medium">*Pulang: Lembur</p>
             </div>
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
                 <p class="text-gray-400 text-[10px] font-bold uppercase tracking-wider">Pelanggaran Radius</p>
-                <div class="flex items-end justify-between mt-1">
-                    <h2 id="radiusViolation" class="text-3xl font-black text-orange-500">0</h2>
-                    <span class="text-xs font-bold text-orange-600">Out Limit</span>
-                </div>
-                <p class="text-[9px] text-gray-400 mt-2 font-medium">*Absen di luar area cabang</p>
+                <h2 id="radiusViolation" class="text-3xl font-black text-orange-500">0</h2>
+                <p class="text-[9px] text-gray-400 mt-2 font-medium">*Absen di luar area</p>
             </div>
         </div>
 
@@ -94,11 +92,12 @@
                 <table class="w-full text-left text-sm">
                     <thead class="bg-gray-50 text-gray-500 uppercase text-[10px] font-bold tracking-widest">
                         <tr>
-                            <th class="px-6 py-4">Pegawai & Info</th>
-                            <th class="px-6 py-4">Jam Masuk & Status</th>
-                            <th class="px-6 py-4">Jam Pulang & Status</th>
+                            <th class="px-6 py-4">Pegawai</th>
+                            <th class="px-6 py-4">Shift</th>
+                            <th class="px-6 py-4">Jam Datang</th>
+                            <th class="px-6 py-4">Jam Pulang</th>
                             <th class="px-6 py-4">Jarak</th>
-                            <th class="px-6 py-4">Lokasi Presensi</th>
+                            <th class="px-6 py-4">Lokasi</th>
                             <th class="px-6 py-4 text-right">Aksi</th>
                         </tr>
                     </thead>
@@ -114,6 +113,7 @@
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InViY2p6Y2N6cGxmYWtvZHhnYWpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxODMwNDYsImV4cCI6MjA4NTc1OTA0Nn0.knzmrpJOqbZkduGIvZVK4zApoZiSXqCdhMVzcgkMaBE";
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         let globalAttendanceData = [];
+        let branchShifts = [];
 
         document.addEventListener("DOMContentLoaded", () => {
             const today = new Date().toISOString().split('T')[0];
@@ -130,8 +130,7 @@
                 const { data: profile } = await supabaseClient
                     .from('profiles')
                     .select('*, branches(*)')
-                    .eq('id', user.id)
-                    .single();
+                    .eq('id', user.id).single();
                 
                 if (!profile || profile.role !== 'manager') {
                     window.location.href = 'index.html';
@@ -141,26 +140,23 @@
                 document.getElementById('managerWelcome').innerText = `Halo, ${profile.full_name}`;
                 document.getElementById('branchIdentity').innerText = profile.branches?.name || 'Cabang';
 
+                // Ambil data shift untuk cabang ini
+                const { data: shifts } = await supabaseClient.from('shifts').select('*').eq('branch_id', profile.branch_id);
+                branchShifts = shifts || [];
+
                 const dateInput = document.getElementById('filterDate').value;
                 const rangeInput = document.getElementById('filterRange').value;
-                
-                let targetDate = dateInput ? new Date(dateInput) : new Date();
-                let startDate = new Date(targetDate);
-                let endDate = new Date(targetDate);
-                endDate.setHours(23, 59, 59, 999);
+                let startDate = new Date(dateInput);
+                let endDate = new Date(dateInput);
+                endDate.setHours(23,59,59,999);
 
-                if (rangeInput === 'harian') {
-                    startDate.setHours(0, 0, 0, 0);
-                } else if (rangeInput === 'mingguan') {
-                    const day = startDate.getDay() || 7; 
-                    startDate.setDate(startDate.getDate() - day + 1);
-                    startDate.setHours(0,0,0,0);
-                    endDate = new Date(startDate);
-                    endDate.setDate(endDate.getDate() + 6);
-                    endDate.setHours(23,59,59,999);
+                if (rangeInput === 'harian') startDate.setHours(0,0,0,0);
+                else if (rangeInput === 'mingguan') {
+                    startDate.setDate(startDate.getDate() - (startDate.getDay() || 7) + 1);
+                    endDate.setDate(startDate.getDate() + 6);
                 } else if (rangeInput === 'bulanan') {
-                    startDate = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
-                    endDate = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0, 23, 59, 59, 999);
+                    startDate = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+                    endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
                 }
 
                 const { data: attendance, error } = await supabaseClient
@@ -175,18 +171,29 @@
                 renderDashboard(attendance);
 
             } catch (err) {
-                container.innerHTML = `<tr><td colspan="6" class="p-10 text-center text-red-500 font-bold">${err.message}</td></tr>`;
+                container.innerHTML = `<tr><td colspan="7" class="p-10 text-center text-red-500 font-bold">${err.message}</td></tr>`;
             }
         }
 
-        // Fungsi helper untuk mendapatkan jam shift dari notes presensi
-        // Jika ada shift custom, bisa ditambahkan logikanya di sini
-        function getShiftTimes(notes) {
-            if (!notes) return { in: 13, out: 21 }; // Fallback default
-            const n = notes.toUpperCase();
-            if (n.includes('SHIFT 1')) return { in: 13, out: 21 };
-            if (n.includes('SHIFT 2')) return { in: 15, out: 23 };
-            return { in: 13, out: 21 }; // Default apabila format tidak dikenali
+        async function addNewShift() {
+            const name = prompt("Masukkan Nama Shift (Misal: Shift Sore):");
+            const start = prompt("Jam Masuk (Format HH:MM, Misal: 15:00):");
+            const end = prompt("Jam Pulang (Format HH:MM, Misal: 21:00):");
+            
+            if (name && start && end) {
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                const { data: profile } = await supabaseClient.from('profiles').select('branch_id').eq('id', user.id).single();
+                
+                const { error } = await supabaseClient.from('shifts').insert([{
+                    branch_id: profile.branch_id,
+                    shift_name: name,
+                    start_time: start,
+                    end_time: end
+                }]);
+                
+                if (error) alert("Gagal: " + error.message);
+                else { alert("Shift Berhasil Ditambahkan!"); loadManagerData(); }
+            }
         }
 
         function renderDashboard(data) {
@@ -194,182 +201,101 @@
             const container = document.getElementById('managerTableData');
             container.innerHTML = '';
             
-            let totalHadirLengkap = 0, totalTerlambat = 0, totalLembur = 0, totalPelanggaran = 0;
+            let totalHadirLengkap = 0, totalTerlambat = 0, totalLembur = 0, totalPelanggaran = 0, totalTepatWaktu = 0;
 
             const grouped = {};
             data.forEach(item => {
-                // Gunakan format YYYY-MM-DD lokal agar tidak bermasalah karena timezone UTC
                 const d = new Date(item.check_in);
-                const dateKey = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                const dateKey = d.toISOString().split('T')[0];
                 const groupKey = `${item.user_id}-${dateKey}`;
                 
                 if (!grouped[groupKey]) {
-                    grouped[groupKey] = {
-                        masuk: null,
-                        pulang: null,
-                        profile: item.profiles,
-                        branch: item.branches
-                    };
+                    grouped[groupKey] = { masuk: null, pulang: null, profile: item.profiles, branch: item.branches };
                 }
                 
                 const note = item.notes ? item.notes.toUpperCase() : '';
-                if (note.includes('MASUK')) {
-                    grouped[groupKey].masuk = item;
-                } else if (note.includes('PULANG')) {
-                    grouped[groupKey].pulang = item;
-                }
+                if (note.includes('MASUK')) grouped[groupKey].masuk = item;
+                else if (note.includes('PULANG')) grouped[groupKey].pulang = item;
             });
 
-            const groupedArray = Object.values(grouped).reverse();
+            Object.values(grouped).reverse().forEach(group => {
+                let shiftName = (group.masuk?.notes || group.pulang?.notes || '-').split('-')[1]?.trim() || 'Reguler';
+                const currentShift = branchShifts.find(s => s.shift_name === shiftName);
 
-            groupedArray.forEach(group => {
-                if (!group.masuk && !group.pulang) return;
+                // PENILAIAN DATANG
+                let jamDatangHTML = `<span class="text-gray-400 italic">Belum Absen</span>`;
+                if (group.masuk && currentShift) {
+                    const t = new Date(group.masuk.check_in);
+                    const [sh, sm] = currentShift.start_time.split(':');
+                    const target = new Date(t); target.setHours(sh, sm, 0, 0);
+                    const diff = Math.floor((t - target) / 60000);
 
-                let jamMasukHTML = `<span class="text-gray-400 text-[10px] italic">Belum Absen</span>`;
-                let jamPulangHTML = `<span class="text-gray-400 text-[10px] italic">Belum Absen</span>`;
-                let jarakHTML = `-`;
-                let alamatHTML = `<span class="text-gray-400 text-[10px]">Tidak ada data</span>`;
-                let hasPelanggaranRadius = false;
-
-                // --- EVALUASI JAM MASUK ---
-                if (group.masuk) {
-                    const tMasuk = new Date(group.masuk.check_in);
-                    const shift = getShiftTimes(group.masuk.notes);
+                    let st = "KURANG", bg = "bg-red-100 text-red-700";
+                    if (diff <= 0) { st = "SANGAT BAIK"; bg = "bg-green-100 text-green-700"; }
+                    else if (diff <= 5) { st = "BAIK"; bg = "bg-blue-100 text-blue-700"; }
+                    else if (diff <= 15) { st = "CUKUP"; bg = "bg-yellow-100 text-yellow-700"; }
                     
-                    const targetIn = new Date(tMasuk);
-                    targetIn.setHours(shift.in, 0, 0, 0);
-                    const diffInMins = Math.floor((tMasuk - targetIn) / 60000);
-
-                    let statusText = "";
-                    let statusBg = "";
-
-                    if (diffInMins <= 0) { statusText = "SANGAT BAIK"; statusBg = "bg-green-100 text-green-700"; }
-                    else if (diffInMins <= 5) { statusText = "BAIK"; statusBg = "bg-blue-100 text-blue-700"; }
-                    else if (diffInMins <= 15) { statusText = "CUKUP"; statusBg = "bg-yellow-100 text-yellow-700"; }
-                    else { statusText = "KURANG"; statusBg = "bg-red-100 text-red-700"; totalTerlambat++; }
-
-                    jamMasukHTML = `
-                        <p class="text-xs font-bold text-indigo-600">${tMasuk.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})} WIB</p>
-                        <p class="text-[9px] text-gray-400 font-bold mb-1">${tMasuk.toLocaleDateString('id-ID', {day:'numeric', month:'short'})}</p>
-                        <span class="${statusBg} text-[9px] font-black px-2 py-0.5 rounded tracking-widest block w-fit mt-1">${statusText}</span>
-                    `;
-
-                    // Cek Jarak & Lokasi Masuk
-                    const radiusLimit = group.branch?.radius_meter || 50;
-                    if(group.masuk.distance_meters > radiusLimit) hasPelanggaranRadius = true;
-
-                    jarakHTML = `<div class="mb-2 border-b border-gray-100 pb-1"><span class="text-[9px] font-bold text-gray-400 block leading-tight">IN:</span> <span class="font-mono text-xs ${group.masuk.distance_meters > radiusLimit ? 'text-rose-500 font-bold' : 'text-emerald-600'}">${Math.round(group.masuk.distance_meters)}m</span></div>`;
-                    alamatHTML = `<div class="mb-2 border-b border-gray-100 pb-1"><span class="text-[9px] font-bold text-gray-400 block leading-tight">IN:</span> <p class="text-[10px] text-gray-500 leading-tight line-clamp-2 max-w-[150px]">${group.masuk.location_address || '-'}</p></div>`;
+                    if (st === "KURANG") totalTerlambat++;
+                    jamDatangHTML = `<p class="font-bold">${t.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})}</p>
+                                     <span class="${bg} text-[9px] px-2 py-0.5 rounded font-black">${st}</span>`;
                 }
 
-                // --- EVALUASI JAM PULANG ---
-                if (group.pulang) {
-                    const tPulang = new Date(group.pulang.check_in);
-                    const shift = getShiftTimes(group.pulang.notes);
+                // PENILAIAN PULANG
+                let jamPulangHTML = `<span class="text-gray-400 italic">Belum Absen</span>`;
+                if (group.pulang && currentShift) {
+                    const t = new Date(group.pulang.check_in);
+                    const [sh, sm] = currentShift.end_time.split(':');
+                    const target = new Date(t); target.setHours(sh, sm, 0, 0);
+                    const diff = Math.floor((t - target) / 60000);
 
-                    const targetOut = new Date(tPulang);
-                    targetOut.setHours(shift.out, 0, 0, 0);
-                    const diffOutMins = Math.floor((tPulang - targetOut) / 60000);
+                    let st = "KURANG", bg = "bg-red-100 text-red-700";
+                    if (diff > 0) { st = "LEMBUR"; bg = "bg-purple-100 text-purple-700"; totalLembur++; }
+                    else if (diff === 0) { st = "SANGAT BAIK"; bg = "bg-green-100 text-green-700"; totalTepatWaktu++; }
+                    else if (diff >= -5) { st = "BAIK"; bg = "bg-blue-100 text-blue-700"; }
+                    else if (diff >= -15) { st = "CUKUP"; bg = "bg-yellow-100 text-yellow-700"; }
 
-                    let statusText = "";
-                    let statusBg = "";
-
-                    if (diffOutMins > 0) { statusText = "LEMBUR"; statusBg = "bg-purple-100 text-purple-700"; totalLembur++; }
-                    else if (diffOutMins === 0) { statusText = "SANGAT BAIK"; statusBg = "bg-green-100 text-green-700"; }
-                    else if (diffOutMins >= -5) { statusText = "BAIK"; statusBg = "bg-blue-100 text-blue-700"; }
-                    else if (diffOutMins >= -15) { statusText = "CUKUP"; statusBg = "bg-yellow-100 text-yellow-700"; }
-                    else { statusText = "KURANG"; statusBg = "bg-red-100 text-red-700"; } // Pulang > 15 menit lebih awal
-
-                    jamPulangHTML = `
-                        <p class="text-xs font-bold text-gray-700">${tPulang.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})} WIB</p>
-                        <p class="text-[9px] text-gray-400 font-bold mb-1">${tPulang.toLocaleDateString('id-ID', {day:'numeric', month:'short'})}</p>
-                        <span class="${statusBg} text-[9px] font-black px-2 py-0.5 rounded tracking-widest block w-fit mt-1">${statusText}</span>
-                    `;
-
-                    // Cek Jarak & Lokasi Pulang
-                    const radiusLimit = group.branch?.radius_meter || 50;
-                    if(group.pulang.distance_meters > radiusLimit) hasPelanggaranRadius = true;
-
-                    let plgJarak = `<div><span class="text-[9px] font-bold text-gray-400 block leading-tight">OUT:</span> <span class="font-mono text-xs ${group.pulang.distance_meters > radiusLimit ? 'text-rose-500 font-bold' : 'text-emerald-600'}">${Math.round(group.pulang.distance_meters)}m</span></div>`;
-                    jarakHTML = group.masuk ? jarakHTML + plgJarak : plgJarak;
-                    
-                    let plgAlamat = `<div><span class="text-[9px] font-bold text-gray-400 block leading-tight">OUT:</span> <p class="text-[10px] text-gray-500 leading-tight line-clamp-2 max-w-[150px]">${group.pulang.location_address || '-'}</p></div>`;
-                    alamatHTML = group.masuk ? alamatHTML + plgAlamat : plgAlamat;
+                    jamPulangHTML = `<p class="font-bold">${t.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})}</p>
+                                     <span class="${bg} text-[9px] px-2 py-0.5 rounded font-black">${st}</span>`;
                 }
 
-                // Hitung metrik agregat
                 if (group.masuk && group.pulang) totalHadirLengkap++;
-                if (hasPelanggaranRadius) totalPelanggaran++;
-
-                // Button Action Preparation
-                const idMasuk = group.masuk ? group.masuk.id : '';
-                const idPulang = group.pulang ? group.pulang.id : '';
-                
-                const btnFotoMasuk = group.masuk?.photo_url ? `<button onclick="window.open('${group.masuk.photo_url}', '_blank')" class="text-indigo-600 hover:text-indigo-800 font-bold text-[10px] bg-indigo-50 px-2 py-1 rounded transition-all w-full text-center">Foto Masuk</button>` : '';
-                const btnFotoPulang = group.pulang?.photo_url ? `<button onclick="window.open('${group.pulang.photo_url}', '_blank')" class="text-teal-600 hover:text-teal-800 font-bold text-[10px] bg-teal-50 px-2 py-1 rounded transition-all w-full text-center mt-1">Foto Pulang</button>` : '';
+                const radiusLimit = group.branch?.radius_meter || 50;
+                const isViolation = (group.masuk?.distance_meters > radiusLimit) || (group.pulang?.distance_meters > radiusLimit);
+                if (isViolation) totalPelanggaran++;
 
                 container.innerHTML += `
-                    <tr class="hover:bg-gray-50/50 transition border-b border-gray-50">
-                        <td class="px-6 py-4">
-                            <p class="font-bold text-gray-800">${group.profile?.full_name || 'User'}</p>
-                            <p class="text-[10px] text-gray-400 font-bold uppercase tracking-tighter mt-1">${(group.masuk?.notes || group.pulang?.notes || '-').split('-')[1] || 'Shift'}</p>
-                        </td>
-                        <td class="px-6 py-4">${jamMasukHTML}</td>
+                    <tr class="hover:bg-gray-50 border-b border-gray-50">
+                        <td class="px-6 py-4 font-bold text-gray-800">${group.profile?.full_name}</td>
+                        <td class="px-6 py-4 text-[10px] font-bold text-indigo-600 uppercase">${shiftName}</td>
+                        <td class="px-6 py-4">${jamDatangHTML}</td>
                         <td class="px-6 py-4">${jamPulangHTML}</td>
-                        <td class="px-6 py-4">${jarakHTML}</td>
-                        <td class="px-6 py-4">${alamatHTML}</td>
-                        <td class="px-6 py-4">
-                            <div class="flex flex-col gap-1 items-end justify-center">
-                                ${btnFotoMasuk}
-                                ${btnFotoPulang}
-                                <button onclick="deleteRecord('${idMasuk}', '${idPulang}')" class="text-red-600 hover:text-red-800 font-bold text-[10px] bg-red-50 px-2 py-1 rounded transition-all w-full mt-1 text-center border border-red-100">Hapus Histori</button>
-                            </div>
+                        <td class="px-6 py-4 text-xs font-mono ${isViolation ? 'text-red-500 font-bold' : 'text-emerald-600'}">
+                            IN: ${Math.round(group.masuk?.distance_meters || 0)}m<br>OUT: ${Math.round(group.pulang?.distance_meters || 0)}m
+                        </td>
+                        <td class="px-6 py-4 text-[10px] text-gray-500 max-w-[150px] truncate">${group.masuk?.location_address || '-'}</td>
+                        <td class="px-6 py-4 text-right">
+                            <button onclick="deleteRecord('${group.masuk?.id}', '${group.pulang?.id}')" class="text-red-600 bg-red-50 px-3 py-1 rounded-lg font-bold text-xs hover:bg-red-100">Hapus</button>
                         </td>
                     </tr>
                 `;
             });
 
-            // Update isi Flashcards
             document.getElementById('recordCount').innerText = totalHadirLengkap;
+            document.getElementById('ontimeCount').innerText = totalTepatWaktu;
             document.getElementById('lateCount').innerText = totalTerlambat;
             document.getElementById('lemburCount').innerText = totalLembur;
             document.getElementById('radiusViolation').innerText = totalPelanggaran;
         }
 
-        // Fungsi Delete Diperbarui
-        async function deleteRecord(idMasuk, idPulang) {
-            if(confirm('Peringatan: Aksi ini akan menghapus histori presensi (Masuk & Pulang) milik pegawai di baris ini. Lanjutkan?')) {
-                try {
-                    // Menghapus data Masuk jika ada
-                    if (idMasuk) {
-                        const { error: err1 } = await supabaseClient.from('attendance').delete().eq('id', idMasuk);
-                        if (err1) throw err1;
-                    }
-                    // Menghapus data Pulang jika ada
-                    if (idPulang) {
-                        const { error: err2 } = await supabaseClient.from('attendance').delete().eq('id', idPulang);
-                        if (err2) throw err2;
-                    }
-                    alert('Data histori kehadiran berhasil dihapus.');
-                    loadManagerData();
-                } catch (error) {
-                    alert('Gagal menghapus data: ' + error.message);
-                }
-            }
+        async function deleteRecord(idIn, idOut) {
+            if(!confirm('Hapus histori satu hari ini?')) return;
+            if(idIn) await supabaseClient.from('attendance').delete().eq('id', idIn);
+            if(idOut) await supabaseClient.from('attendance').delete().eq('id', idOut);
+            alert('Berhasil dihapus');
+            loadManagerData();
         }
 
-        function exportManagerData() {
-            if(globalAttendanceData.length === 0) return alert('Tidak ada data.');
-            const worksheet = XLSX.utils.json_to_sheet(globalAttendanceData);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan");
-            XLSX.writeFile(workbook, "Laporan_Manager.xlsx");
-        }
-
-        async function logout() {
-            await supabaseClient.auth.signOut();
-            window.location.href = 'login.html';
-        }
+        async function logout() { await supabaseClient.auth.signOut(); window.location.href = 'login.html'; }
     </script>
 </body>
 </html>
