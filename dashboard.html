@@ -22,10 +22,60 @@
                 </div>
             </div>
         </div>
-        <button onclick="logout()" class="bg-red-50 hover:bg-red-100 text-red-600 px-4 py-2 rounded-xl font-bold text-sm transition-all border border-red-100">
-            Logout
-        </button>
+        <div class="flex items-center gap-3">
+            <button onclick="openShiftModal()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 px-4 py-2 rounded-xl font-bold text-sm transition-all border border-indigo-100">
+                ⚙️ Kelola Shift
+            </button>
+            <button onclick="logout()" class="bg-red-50 hover:bg-red-100 text-red-600 px-4 py-2 rounded-xl font-bold text-sm transition-all border border-red-100">
+                Logout
+            </button>
+        </div>
     </nav>
+
+    <!-- MODAL KELOLA SHIFT -->
+    <div id="shiftModal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div class="p-6 border-b border-gray-100 flex justify-between items-center sticky top-0 bg-white rounded-t-2xl">
+                <h2 class="font-black text-gray-800 text-lg">⚙️ Manajemen Shift Kerja</h2>
+                <button onclick="closeShiftModal()" class="text-gray-400 hover:text-gray-600 text-2xl font-bold leading-none">&times;</button>
+            </div>
+
+            <!-- Form Tambah Shift -->
+            <div class="p-6 border-b border-gray-50">
+                <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Tambah Shift Baru</p>
+                <div class="space-y-3">
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-500 uppercase">Nama Shift</label>
+                        <input type="text" id="newShiftName" placeholder="Contoh: Shift Ramadhan" 
+                            class="block w-full mt-1 p-3 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-300">
+                    </div>
+                    <div class="flex gap-3">
+                        <div class="flex-1">
+                            <label class="text-[10px] font-bold text-gray-500 uppercase">Jam Masuk</label>
+                            <input type="time" id="newShiftStart" 
+                                class="block w-full mt-1 p-3 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-300">
+                        </div>
+                        <div class="flex-1">
+                            <label class="text-[10px] font-bold text-gray-500 uppercase">Jam Pulang</label>
+                            <input type="time" id="newShiftEnd" 
+                                class="block w-full mt-1 p-3 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-300">
+                        </div>
+                    </div>
+                    <button onclick="addShift()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-black text-sm transition-all shadow-md shadow-indigo-100">
+                        + Tambah Shift
+                    </button>
+                </div>
+            </div>
+
+            <!-- Daftar Shift -->
+            <div class="p-6">
+                <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Daftar Shift Aktif</p>
+                <div id="shiftList" class="space-y-2">
+                    <div class="text-center py-6 text-gray-400 text-sm font-medium">Memuat data shift...</div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div class="max-w-7xl mx-auto px-6 pt-6 flex flex-wrap gap-4 items-end justify-between">
         <div class="flex gap-4 items-end">
@@ -114,6 +164,7 @@
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InViY2p6Y2N6cGxmYWtvZHhnYWpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxODMwNDYsImV4cCI6MjA4NTc1OTA0Nn0.knzmrpJOqbZkduGIvZVK4zApoZiSXqCdhMVzcgkMaBE";
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         let globalAttendanceData = [];
+        let currentManagerBranchId = null;
 
         document.addEventListener("DOMContentLoaded", () => {
             const today = new Date().toISOString().split('T')[0];
@@ -138,6 +189,7 @@
                     return;
                 }
 
+                currentManagerBranchId = profile.branch_id;
                 document.getElementById('managerWelcome').innerText = `Halo, ${profile.full_name}`;
                 document.getElementById('branchIdentity').innerText = profile.branches?.name || 'Cabang';
 
@@ -370,7 +422,118 @@
             await supabaseClient.auth.signOut();
             window.location.href = 'login.html';
         }
+
+        // =============================================
+        // SHIFT MANAGEMENT FUNCTIONS
+        // =============================================
+
+        function openShiftModal() {
+            document.getElementById('shiftModal').classList.remove('hidden');
+            loadShiftList();
+        }
+
+        function closeShiftModal() {
+            document.getElementById('shiftModal').classList.add('hidden');
+            // Reset form
+            document.getElementById('newShiftName').value = '';
+            document.getElementById('newShiftStart').value = '';
+            document.getElementById('newShiftEnd').value = '';
+        }
+
+        async function loadShiftList() {
+            const container = document.getElementById('shiftList');
+            container.innerHTML = `<div class="text-center py-6 text-gray-400 text-sm font-medium">Memuat data shift...</div>`;
+
+            if (!currentManagerBranchId) {
+                container.innerHTML = `<div class="text-center py-6 text-red-400 text-sm font-medium">Branch ID tidak ditemukan.</div>`;
+                return;
+            }
+
+            const { data: shifts, error } = await supabaseClient
+                .from('shifts')
+                .select('*')
+                .eq('branch_id', currentManagerBranchId)
+                .order('created_at', { ascending: true });
+
+            if (error) {
+                container.innerHTML = `<div class="text-center py-4 text-red-500 text-sm font-bold">Error: ${error.message}</div>`;
+                return;
+            }
+
+            if (!shifts || shifts.length === 0) {
+                container.innerHTML = `<div class="text-center py-6 text-gray-400 text-sm font-medium">Belum ada shift. Tambahkan shift baru di atas.</div>`;
+                return;
+            }
+
+            container.innerHTML = shifts.map(s => {
+                const startFormatted = s.start_time ? s.start_time.substring(0, 5) : '--:--';
+                const endFormatted = s.end_time ? s.end_time.substring(0, 5) : '--:--';
+                return `
+                    <div class="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3 border border-gray-100">
+                        <div>
+                            <p class="font-black text-gray-800 text-sm">${s.shift_name}</p>
+                            <p class="text-[11px] text-indigo-500 font-bold mt-0.5">${startFormatted} – ${endFormatted} WIB</p>
+                        </div>
+                        <button onclick="deleteShift('${s.id}')" 
+                            class="text-red-500 hover:text-red-700 text-[10px] font-black bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg border border-red-100 transition-all">
+                            Hapus
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function addShift() {
+            const name = document.getElementById('newShiftName').value.trim();
+            const start = document.getElementById('newShiftStart').value;
+            const end = document.getElementById('newShiftEnd').value;
+
+            if (!name || !start || !end) {
+                alert('Mohon isi semua kolom: Nama Shift, Jam Masuk, dan Jam Pulang.');
+                return;
+            }
+
+            if (!currentManagerBranchId) {
+                alert('Branch ID tidak ditemukan. Coba muat ulang halaman.');
+                return;
+            }
+
+            const { error } = await supabaseClient.from('shifts').insert([{
+                branch_id: currentManagerBranchId,
+                shift_name: name,
+                start_time: start + ':00',
+                end_time: end + ':00'
+            }]);
+
+            if (error) {
+                alert('Gagal menambah shift: ' + error.message);
+                return;
+            }
+
+            // Reset form & reload list
+            document.getElementById('newShiftName').value = '';
+            document.getElementById('newShiftStart').value = '';
+            document.getElementById('newShiftEnd').value = '';
+            loadShiftList();
+        }
+
+        async function deleteShift(shiftId) {
+            if (!confirm('Yakin ingin menghapus shift ini? Data shift yang sudah terpakai tidak akan terpengaruh.')) return;
+
+            const { error } = await supabaseClient.from('shifts').delete().eq('id', shiftId);
+
+            if (error) {
+                alert('Gagal menghapus shift: ' + error.message);
+                return;
+            }
+
+            loadShiftList();
+        }
+
+        // Tutup modal saat klik backdrop
+        document.getElementById('shiftModal').addEventListener('click', function(e) {
+            if (e.target === this) closeShiftModal();
+        });
     </script>
 </body>
 </html>
-
